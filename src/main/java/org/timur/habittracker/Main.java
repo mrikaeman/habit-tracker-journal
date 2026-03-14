@@ -1,21 +1,58 @@
 package org.timur.habittracker;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import java.util.Scanner;
+
 public class Main {
     public static void main(String[] args) {
-        Habit workout = new Habit("Workout", "50 pushups, 30 pullups, stretching", 30, 5, false);
-        Habit singing = new Habit("Singing", "singing exercizes", 30, 5, false);
-        Habit meditation = new Habit("Meditation", "meditation exercizes (kundalini)", 45, 5, false);
+        HabitTracker tracker = new HabitTracker();
+        Scanner scanner = new Scanner(System.in);
 
-        HabitTracker habitTracker = new HabitTracker();
+        boolean running = true;
 
-        habitTracker.addHabit(workout);
-        habitTracker.addHabit(singing);
-        habitTracker.addHabit(meditation);
+        while (running) {
+            System.out.println("\nCommands: add, list, complete, exit");
+            System.out.print("> ");
+            String command = scanner.nextLine();
 
-        habitTracker.markHabitCompleted("Workout");
+            switch (command.toLowerCase()) {
+                case "add":
+                    System.out.print("Name: ");
+                    String name = scanner.nextLine();
 
-        habitTracker.listHabits();
+                    System.out.print("Description: ");
+                    String description = scanner.nextLine();
+
+                    System.out.println("How long per day (minutes)? ");
+                    int time = Integer.parseInt(scanner.nextLine());
+
+                    System.out.println("How often per week? ");
+                    int frequency = Integer.parseInt(scanner.nextLine());
+
+                    Habit habit = new Habit(name, description, time, frequency);
+                    tracker.addHabit(habit);
+                    System.out.println("Habit added.");
+                    break;
+
+                case "list":
+                    tracker.listHabits();
+                    break;
+
+                case "complete":
+                    System.out.print("Enter habit name: ");
+                    String habitName = scanner.nextLine();
+                    tracker.markHabitCompleted(habitName);
+                    break;
+
+                case "exit":
+                    running = false;
+                    System.out.println("Goodbye.");
+                    break;
+
+                default:
+                    System.out.println("Unknown command.");
+            }
+        }
+
+        scanner.close();
     }
 }

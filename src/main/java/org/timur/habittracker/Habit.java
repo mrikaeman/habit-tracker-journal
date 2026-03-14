@@ -7,12 +7,13 @@ public class Habit {
     private int frequency; // how often per week
     private boolean completedToday;
 
-    public Habit(String name, String description, int time, int frequency, boolean completedToday) {
+
+    public Habit(String name, String description, int time, int frequency) {
         this.name = name;
         this.description = description;
         this.time = time;
         this.frequency = frequency;
-        this.completedToday = completedToday;
+        this.completedToday = false;
     }
 
     public String getName() {

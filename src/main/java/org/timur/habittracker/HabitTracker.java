@@ -31,6 +31,11 @@ public class HabitTracker {
     }
 
     public void listHabits() {
+        if (habits.isEmpty()) {
+            System.out.println("No habits added yet.");
+            return;
+        }
+
         for (Habit habit : habits) {
             System.out.println("Habit: " + habit.getName());
             System.out.println("Description: " + habit.getDescription());
@@ -38,6 +43,7 @@ public class HabitTracker {
             System.out.println();
         }
     }
+
 
     public void markHabitCompleted(String name)
     {
