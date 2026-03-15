@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Habit Tracker</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+<h1>Habit Tracker</h1>
+
+<h2>Add a Habit</h2>
+<form action="/add" method="post">
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" required>
+
+    <br><br>
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required>
+
+    <br><br>
+
+    <button type="submit">Add Habit</button>
+</form>
+
+<hr>
+
+<h2>Your Habits</h2>
+
+<div th:if="${#lists.isEmpty(habits)}">
+    <p>No habits yet.</p>
+</div>
+
+<div th:unless="${#lists.isEmpty(habits)}">
+    <ul>
+        <li th:each="habit : ${habits}">
+            <strong th:text="${habit.name}">Habit Name</strong> -
+            <span th:text="${habit.description}">Description</span> -
+            Completed today:
+            <span th:text="${habit.completedToday}">false</span>
+
+            <form action="/complete" method="post" style="display:inline;">
+                <input type="hidden" name="id" th:value="${habit.id}">
+                <button type="submit" th:if="${!habit.completedToday}">
+                    Mark as completed
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>
+
+</body>
+</html>

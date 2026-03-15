@@ -1,9 +1,13 @@
 package org.timur.habittracker;
 
-import java.util.Scanner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+//import java.util.Scanner;
+@SpringBootApplication
 public class Main {
     public static void main(String[] args) {
+        /*
         HabitTracker tracker = new HabitTracker();
         Scanner scanner = new Scanner(System.in);
 
@@ -54,5 +58,7 @@ public class Main {
         }
 
         scanner.close();
+         */ //old application
+        SpringApplication.run(Main.class, args);
     }
 }

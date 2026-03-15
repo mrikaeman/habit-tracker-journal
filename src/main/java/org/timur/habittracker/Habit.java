@@ -1,19 +1,20 @@
 package org.timur.habittracker;
 
 public class Habit {
+    private final long id;
     private String name;
     private String description;
-    private int time; // how long per day
-    private int frequency; // how often per week
     private boolean completedToday;
 
-
-    public Habit(String name, String description, int time, int frequency) {
+    public Habit(long id, String name, String description) {
+        this.id = id;
         this.name = name;
         this.description = description;
-        this.time = time;
-        this.frequency = frequency;
         this.completedToday = false;
+    }
+
+    public long getId() {
+        return id;
     }
 
     public String getName() {
@@ -24,19 +25,15 @@ public class Habit {
         return description;
     }
 
-    public int getTime() {
-        return time;
-    }
-
-    public int getFrequency() {
-        return frequency;
-    }
-
     public boolean isCompletedToday() {
         return completedToday;
     }
 
-    public void completeToday() {
-        completedToday = true;
+    public void markCompleted() {
+        this.completedToday = true;
+    }
+
+    public void resetForNewDay() {
+        this.completedToday = false;
     }
 }
