@@ -3,50 +3,168 @@
 <head>
     <title>Habit Tracker</title>
     <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fb;
+            margin: 0;
+            padding: 0;
+            color: #222;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #2d72d9;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #1f5bb5;
+        }
+
+        .habit-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .habit-item {
+            border-left: 6px solid #2d72d9;
+        }
+
+        .habit-item.completed {
+            border-left-color: #2e9d57;
+            background-color: #f3fcf6;
+        }
+
+        .habit-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .habit-description {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .habit-status {
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .completed-text {
+            color: #2e9d57;
+            font-weight: bold;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .inline-form {
+            display: inline;
+        }
+    </style>
 </head>
 <body>
-<h1>Habit Tracker</h1>
+<div class="container">
+    <h1>Habit Tracker</h1>
 
-<h2>Add a Habit</h2>
-<form action="/add" method="post">
-    <label for="name">Name:</label>
-    <input type="text" id="name" name="name" required>
+    <div class="card">
+        <h2>Add a Habit</h2>
+        <form action="/add" method="post">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
 
-    <br><br>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" required>
+            </div>
 
-    <label for="description">Description:</label>
-    <input type="text" id="description" name="description" required>
+            <button type="submit">Add Habit</button>
+        </form>
+    </div>
 
-    <br><br>
+    <div class="card">
+        <h2>Your Habits</h2>
 
-    <button type="submit">Add Habit</button>
-</form>
+        <div th:if="${#lists.isEmpty(habits)}" class="empty-message">
+            No habits yet.
+        </div>
 
-<hr>
+        <div th:unless="${#lists.isEmpty(habits)}" class="habit-list">
+            <div th:each="habit : ${habits}"
+                 class="card habit-item"
+                 th:classappend="${habit.completedToday} ? ' completed' : ''">
 
-<h2>Your Habits</h2>
+                <div class="habit-title" th:text="${habit.name}">Habit Name</div>
 
-<div th:if="${#lists.isEmpty(habits)}">
-    <p>No habits yet.</p>
+                <div class="habit-description" th:text="${habit.description}">
+                    Description
+                </div>
+
+                <div class="habit-status">
+                    Status:
+                    <span th:if="${habit.completedToday}" class="completed-text">Completed today</span>
+                    <span th:unless="${habit.completedToday}">Not completed yet</span>
+                </div>
+
+                <form action="/complete" method="post" class="inline-form">
+                    <input type="hidden" name="id" th:value="${habit.id}">
+                    <button type="submit" th:if="${!habit.completedToday}">
+                        Mark as completed
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-
-<div th:unless="${#lists.isEmpty(habits)}">
-    <ul>
-        <li th:each="habit : ${habits}">
-            <strong th:text="${habit.name}">Habit Name</strong> -
-            <span th:text="${habit.description}">Description</span> -
-            Completed today:
-            <span th:text="${habit.completedToday}">false</span>
-
-            <form action="/complete" method="post" style="display:inline;">
-                <input type="hidden" name="id" th:value="${habit.id}">
-                <button type="submit" th:if="${!habit.completedToday}">
-                    Mark as completed
-                </button>
-            </form>
-        </li>
-    </ul>
-</div>
-
 </body>
 </html>
