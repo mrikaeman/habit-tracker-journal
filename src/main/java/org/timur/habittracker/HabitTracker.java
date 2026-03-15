@@ -30,7 +30,7 @@ public class HabitTracker {
         }
     }
 
-    public void removeHabitById(Long id) {
+    public void deleteHabit(Long id) {
         habitRepository.deleteById(id);
     }
 }

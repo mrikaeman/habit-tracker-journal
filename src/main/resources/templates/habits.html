@@ -109,6 +109,14 @@
         .inline-form {
             display: inline;
         }
+
+        button.delete {
+            background-color: #d9534f;
+        }
+
+        button.delete:hover {
+            background-color: #b52b27;
+        }
     </style>
 </head>
 <body>
@@ -161,6 +169,10 @@
                     <button type="submit" th:if="${!habit.completedToday}">
                         Mark as completed
                     </button>
+                </form>
+                <form action="/delete" method="post" class="inline-form">
+                    <input type="hidden" name="id" th:value="${habit.id}">
+                    <button type="submit" class="delete">Delete</button>
                 </form>
             </div>
         </div>

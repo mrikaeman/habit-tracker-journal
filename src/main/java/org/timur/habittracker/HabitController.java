@@ -33,4 +33,9 @@ public class HabitController {
         habitTracker.markHabitCompleted(id);
         return "redirect:/";
     }
+    @PostMapping("/delete")
+    public String deleteHabit(@RequestParam Long id) {
+        habitTracker.deleteHabit(id);
+        return "redirect:/";
+    }
 }
