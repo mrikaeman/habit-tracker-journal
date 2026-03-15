@@ -29,7 +29,7 @@ public class HabitController {
     }
 
     @PostMapping("/complete")
-    public String completeHabit(@RequestParam long id) {
+    public String completeHabit(@RequestParam Long id) {
         habitTracker.markHabitCompleted(id);
         return "redirect:/";
     }

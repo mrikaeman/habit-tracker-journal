@@ -1,19 +1,31 @@
 package org.timur.habittracker;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+@Entity
 public class Habit {
-    private final long id;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String name;
     private String description;
     private boolean completedToday;
 
-    public Habit(long id, String name, String description) {
-        this.id = id;
+    public Habit() {
+    }
+
+    public Habit(String name, String description) {
         this.name = name;
         this.description = description;
         this.completedToday = false;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
