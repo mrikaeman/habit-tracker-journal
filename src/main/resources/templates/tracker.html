@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Habit Tracker</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fb;
+            margin: 0;
+            padding: 0;
+            color: #222;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h1, h2 {
+            margin-top: 0;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #2d72d9;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #e3e7ee;
+            text-align: left;
+        }
+
+        .muted {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Habit Tracker Backend Foundation</h1>
+
+    <div class="card">
+        <h2>Today</h2>
+        <p>
+            Entry date:
+            <strong th:text="${todayEntry.date}">2026-03-16</strong>
+        </p>
+
+        <form action="/highlight" method="post">
+            <label for="dailyHighlight">Daily highlight</label>
+            <textarea id="dailyHighlight"
+                      name="dailyHighlight"
+                      th:text="${todayEntry.dailyHighlight}"></textarea>
+            <p class="muted">This is a temporary form to exercise the new `DayEntry` backend model.</p>
+            <button type="submit">Save highlight</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Habit Definitions</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="definition : ${habitDefinitions}">
+                <td th:text="${definition.name}">Exercise</td>
+                <td th:text="${definition.type}">CHECKBOX</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Today&apos;s Record Slots</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Habit</th>
+                <th>Type</th>
+                <th>Stored value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="record : ${todayRecords}">
+                <td th:text="${record.habitDefinition.name}">Exercise</td>
+                <td th:text="${record.habitDefinition.type}">CHECKBOX</td>
+                <td th:text="${record.habitDefinition.type.name() == 'CHECKBOX' ? record.checkedValue : record.numericValue}">null</td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted">TODO: replace this with the monthly paper-journal table UI.</p>
+    </div>
+
+    <div class="card">
+        <h2>Recent Day Entries</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Highlight</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${recentEntries}">
+                <td th:text="${entry.date}">2026-03-16</td>
+                <td th:text="${entry.dailyHighlight != null ? entry.dailyHighlight : '-'}">-</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

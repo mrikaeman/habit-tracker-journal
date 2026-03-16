@@ -1,0 +1,6 @@
+2026-03-15 15:06:57.771228+01:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]*"; SQL statement:
+* [42000-232]
+2026-03-15 15:07:06.093880+01:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "[*]ID"; expected "INSERT"; SQL statement:
+ID [42001-232]
