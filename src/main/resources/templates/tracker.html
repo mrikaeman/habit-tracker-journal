@@ -58,7 +58,23 @@
         }
 
         .habit-column {
-            min-width: 90px;
+            min-width: 110px;
+            text-align: center;
+        }
+
+        .habit-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .habit-name {
+            line-height: 1.3;
+        }
+
+        .add-column-cell {
+            width: 60px;
             text-align: center;
         }
 
@@ -78,8 +94,18 @@
             font-style: italic;
         }
 
-        .month-table td.habit-cell {
+        .habit-cell {
             text-align: center;
+        }
+
+        .rating-cell {
+            cursor: pointer;
+        }
+
+        .checkbox-input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
 
         .muted {
@@ -109,6 +135,10 @@
             margin-top: 16px;
         }
 
+        .field-group {
+            margin-top: 12px;
+        }
+
         textarea {
             width: 100%;
             min-height: 120px;
@@ -118,6 +148,17 @@
             box-sizing: border-box;
             font-size: 14px;
             resize: vertical;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
         }
 
         button {
@@ -130,9 +171,29 @@
             font-size: 14px;
         }
 
+        .add-column-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 22px;
+            line-height: 1;
+        }
+
         button.secondary {
             background-color: #e3e7ee;
             color: #222;
+        }
+
+        button.danger {
+            background-color: #c94444;
+        }
+
+        .column-manage-button {
+            background-color: #eef3fb;
+            color: #222;
+            padding: 6px 10px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -140,7 +201,7 @@
 <div class="container">
     <div class="card">
         <h1 th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">March 2026</h1>
-        <p class="muted">Read-only monthly journal view for the current month.</p>
+        <p class="muted">Click a highlight to edit it. Add custom columns with the plus button.</p>
     </div>
 
     <div class="card">
@@ -149,7 +210,23 @@
             <tr>
                 <th class="day-column">Day</th>
                 <th class="highlight-column">Daily Highlight</th>
-                <th class="habit-column" th:each="definition : ${habitDefinitions}" th:text="${definition.name}">Exercise</th>
+                <th class="habit-column"
+                    th:each="definition : ${habitDefinitions}"
+                    th:attr="data-habit-id=${definition.id},
+                             data-habit-name=${definition.name},
+                             data-habit-type=${definition.type.name()},
+                             data-scale-max=${definition.ratingScaleMax}">
+                    <div class="habit-header">
+                        <span class="habit-name"
+                              th:text="${definition.type.name() == 'RATING' ? definition.name + ' (1-' + definition.ratingScaleMax + ')' : definition.name}">
+                            Exercise
+                        </span>
+                        <button type="button" class="column-manage-button">Edit</button>
+                    </div>
+                </th>
+                <th class="add-column-cell">
+                    <button type="button" class="add-column-button" id="openAddColumnButton">+</button>
+                </th>
             </tr>
             </thead>
             <tbody>
@@ -166,8 +243,21 @@
                 <td class="habit-cell"
                     th:each="definition : ${habitDefinitions}"
                     th:with="record=${row.recordsByHabitId[definition.id]}"
-                    th:text="${definition.type.name() == 'CHECKBOX' ? (record != null and record.checkedValue == true ? 'X' : '') : (record != null and record.numericValue != null ? record.numericValue : '')}">
+                    th:attr="data-type=${definition.type.name()},
+                             data-date=${row.date},
+                             data-habit-id=${definition.id},
+                             data-habit-name=${definition.name},
+                             data-scale-max=${definition.ratingScaleMax},
+                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}"
+                    th:classappend="${definition.type.name() == 'RATING'} ? ' rating-cell' : ''">
+                    <input th:if="${definition.type.name() == 'CHECKBOX'}"
+                           type="checkbox"
+                           class="checkbox-input"
+                           th:checked="${record != null and record.checkedValue == true}">
+                    <span th:if="${definition.type.name() == 'RATING'}"
+                          th:text="${record != null and record.numericValue != null ? record.numericValue + '/' + definition.ratingScaleMax : ''}"></span>
                 </td>
+                <td class="add-column-cell"></td>
             </tr>
             </tbody>
         </table>
@@ -179,7 +269,7 @@
         <h2>Edit Highlight</h2>
         <p class="muted" id="highlightDialogDate">2026-03-21</p>
 
-        <form action="/highlight" method="post" id="highlightForm">
+        <form action="/highlight" method="post">
             <input type="hidden" id="highlightDateInput" name="date">
             <label for="highlightTextarea">Daily highlight</label>
             <textarea id="highlightTextarea" name="dailyHighlight" maxlength="500"></textarea>
@@ -192,6 +282,117 @@
     </div>
 </dialog>
 
+<dialog id="addColumnDialog">
+    <div class="dialog-content">
+        <h2>Add Column</h2>
+
+        <form action="/columns" method="post">
+            <div class="field-group">
+                <label for="columnNameInput">Column name</label>
+                <input type="text" id="columnNameInput" name="name" maxlength="255" required>
+            </div>
+
+            <div class="field-group">
+                <label for="columnTypeInput">Column type</label>
+                <select id="columnTypeInput" name="type">
+                    <option value="CHECKBOX">Checkbox</option>
+                    <option value="RATING">Rating</option>
+                </select>
+            </div>
+
+            <div class="field-group" id="ratingScaleGroup" hidden>
+                <label for="ratingScaleInput">Rating scale max</label>
+                <input type="number" id="ratingScaleInput" name="ratingScaleMax" min="1" value="10">
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelAddColumnButton">Cancel</button>
+                <button type="submit">Add</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<dialog id="manageColumnDialog">
+    <div class="dialog-content">
+        <h2>Manage Column</h2>
+        <p class="muted" id="manageColumnInfo">Checkbox column</p>
+
+        <form action="/columns/rename" method="post">
+            <input type="hidden" id="manageColumnIdInput" name="habitDefinitionId">
+
+            <div class="field-group">
+                <label for="manageColumnNameInput">Column name</label>
+                <input type="text" id="manageColumnNameInput" name="name" maxlength="255" required>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelManageColumnButton">Cancel</button>
+                <button type="submit">Rename</button>
+            </div>
+        </form>
+
+        <form action="/columns/delete" method="post">
+            <input type="hidden" id="deleteColumnIdInput" name="habitDefinitionId">
+
+            <div class="dialog-actions">
+                <button type="submit" class="danger">Delete Column</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<dialog id="checkboxDialog">
+    <div class="dialog-content">
+        <h2 id="checkboxDialogTitle">Rate Activity</h2>
+        <p class="muted" id="checkboxDialogDate">2026-03-21</p>
+
+        <form action="/records/checkbox" method="post">
+            <input type="hidden" id="checkboxDateInput" name="date">
+            <input type="hidden" id="checkboxHabitDefinitionInput" name="habitDefinitionId">
+            <input type="hidden" name="checked" value="true">
+
+            <div class="field-group">
+                <label for="checkboxRatingInput">Rate from 1 to 10</label>
+                <input type="number" id="checkboxRatingInput" name="numericValue" min="1" max="10" required>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelCheckboxButton">Cancel</button>
+                <button type="submit">OK</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<dialog id="ratingDialog">
+    <div class="dialog-content">
+        <h2 id="ratingDialogTitle">Rate Activity</h2>
+        <p class="muted" id="ratingDialogDate">2026-03-21</p>
+
+        <form action="/records/rating" method="post">
+            <input type="hidden" id="ratingDateInput" name="date">
+            <input type="hidden" id="ratingHabitDefinitionInput" name="habitDefinitionId">
+
+            <div class="field-group">
+                <label for="ratingValueInput" id="ratingValueLabel">Rating</label>
+                <input type="number" id="ratingValueInput" name="numericValue" min="1" required>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelRatingButton">Cancel</button>
+                <button type="submit">OK</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<form action="/records/checkbox" method="post" id="checkboxClearForm" hidden>
+    <input type="hidden" id="checkboxClearDateInput" name="date">
+    <input type="hidden" id="checkboxClearHabitDefinitionInput" name="habitDefinitionId">
+    <input type="hidden" name="checked" value="false">
+</form>
+
 <script>
     const highlightDialog = document.getElementById("highlightDialog");
     const highlightDateInput = document.getElementById("highlightDateInput");
@@ -199,6 +400,42 @@
     const highlightTextarea = document.getElementById("highlightTextarea");
     const cancelHighlightButton = document.getElementById("cancelHighlightButton");
     const highlightFields = document.querySelectorAll(".highlight-text");
+
+    const addColumnDialog = document.getElementById("addColumnDialog");
+    const openAddColumnButton = document.getElementById("openAddColumnButton");
+    const cancelAddColumnButton = document.getElementById("cancelAddColumnButton");
+    const columnTypeInput = document.getElementById("columnTypeInput");
+    const ratingScaleGroup = document.getElementById("ratingScaleGroup");
+    const ratingScaleInput = document.getElementById("ratingScaleInput");
+    const manageColumnDialog = document.getElementById("manageColumnDialog");
+    const manageColumnInfo = document.getElementById("manageColumnInfo");
+    const manageColumnIdInput = document.getElementById("manageColumnIdInput");
+    const manageColumnNameInput = document.getElementById("manageColumnNameInput");
+    const deleteColumnIdInput = document.getElementById("deleteColumnIdInput");
+    const cancelManageColumnButton = document.getElementById("cancelManageColumnButton");
+    const columnManageButtons = document.querySelectorAll(".column-manage-button");
+
+    const checkboxDialog = document.getElementById("checkboxDialog");
+    const checkboxDialogTitle = document.getElementById("checkboxDialogTitle");
+    const checkboxDialogDate = document.getElementById("checkboxDialogDate");
+    const checkboxDateInput = document.getElementById("checkboxDateInput");
+    const checkboxHabitDefinitionInput = document.getElementById("checkboxHabitDefinitionInput");
+    const checkboxRatingInput = document.getElementById("checkboxRatingInput");
+    const cancelCheckboxButton = document.getElementById("cancelCheckboxButton");
+
+    const ratingDialog = document.getElementById("ratingDialog");
+    const ratingDialogTitle = document.getElementById("ratingDialogTitle");
+    const ratingDialogDate = document.getElementById("ratingDialogDate");
+    const ratingDateInput = document.getElementById("ratingDateInput");
+    const ratingHabitDefinitionInput = document.getElementById("ratingHabitDefinitionInput");
+    const ratingValueInput = document.getElementById("ratingValueInput");
+    const ratingValueLabel = document.getElementById("ratingValueLabel");
+    const cancelRatingButton = document.getElementById("cancelRatingButton");
+
+    const checkboxClearForm = document.getElementById("checkboxClearForm");
+    const checkboxClearDateInput = document.getElementById("checkboxClearDateInput");
+    const checkboxClearHabitDefinitionInput = document.getElementById("checkboxClearHabitDefinitionInput");
+    const habitCells = document.querySelectorAll(".habit-cell");
 
     function openHighlightDialog(date, highlight) {
         highlightDateInput.value = date;
@@ -208,14 +445,116 @@
         highlightTextarea.focus();
     }
 
+    function updateAddColumnForm() {
+        const isRating = columnTypeInput.value === "RATING";
+        ratingScaleGroup.hidden = !isRating;
+        ratingScaleInput.required = isRating;
+    }
+
+    function openCheckboxDialog(cell) {
+        checkboxDialogTitle.textContent = cell.dataset.habitName;
+        checkboxDialogDate.textContent = cell.dataset.date;
+        checkboxDateInput.value = cell.dataset.date;
+        checkboxHabitDefinitionInput.value = cell.dataset.habitId;
+        checkboxRatingInput.value = cell.dataset.rating || "";
+        checkboxDialog.showModal();
+        checkboxRatingInput.focus();
+    }
+
+    function openRatingDialog(cell) {
+        const scaleMax = cell.dataset.scaleMax || "10";
+        ratingDialogTitle.textContent = cell.dataset.habitName;
+        ratingDialogDate.textContent = cell.dataset.date;
+        ratingDateInput.value = cell.dataset.date;
+        ratingHabitDefinitionInput.value = cell.dataset.habitId;
+        ratingValueInput.value = cell.dataset.rating || "";
+        ratingValueInput.max = scaleMax;
+        ratingValueLabel.textContent = "Rate from 1 to " + scaleMax;
+        ratingDialog.showModal();
+        ratingValueInput.focus();
+    }
+
+    function openManageColumnDialog(headerCell) {
+        const type = headerCell.dataset.habitType;
+        const scaleMax = headerCell.dataset.scaleMax;
+
+        manageColumnIdInput.value = headerCell.dataset.habitId;
+        deleteColumnIdInput.value = headerCell.dataset.habitId;
+        manageColumnNameInput.value = headerCell.dataset.habitName;
+        manageColumnInfo.textContent = type === "RATING"
+            ? "Rating column on a 1-" + scaleMax + " scale"
+            : "Checkbox column with 1-10 follow-up rating";
+
+        manageColumnDialog.showModal();
+        manageColumnNameInput.focus();
+    }
+
     highlightFields.forEach(function (field) {
         field.addEventListener("click", function () {
             openHighlightDialog(field.dataset.date, field.dataset.highlight);
         });
     });
 
+    openAddColumnButton.addEventListener("click", function () {
+        updateAddColumnForm();
+        addColumnDialog.showModal();
+    });
+
+    columnTypeInput.addEventListener("change", updateAddColumnForm);
+
     cancelHighlightButton.addEventListener("click", function () {
         highlightDialog.close();
+    });
+
+    cancelAddColumnButton.addEventListener("click", function () {
+        addColumnDialog.close();
+    });
+
+    cancelManageColumnButton.addEventListener("click", function () {
+        manageColumnDialog.close();
+    });
+
+    cancelCheckboxButton.addEventListener("click", function () {
+        checkboxDialog.close();
+    });
+
+    cancelRatingButton.addEventListener("click", function () {
+        ratingDialog.close();
+    });
+
+    habitCells.forEach(function (cell) {
+        const checkbox = cell.querySelector(".checkbox-input");
+
+        if (checkbox) {
+            checkbox.addEventListener("click", function (event) {
+                event.stopPropagation();
+            });
+
+            checkbox.addEventListener("change", function () {
+                if (checkbox.checked) {
+                    openCheckboxDialog(cell);
+                    return;
+                }
+
+                checkboxClearDateInput.value = cell.dataset.date;
+                checkboxClearHabitDefinitionInput.value = cell.dataset.habitId;
+                checkboxClearForm.submit();
+            });
+
+            return;
+        }
+
+        if (cell.dataset.type === "RATING") {
+            cell.addEventListener("click", function () {
+                openRatingDialog(cell);
+            });
+        }
+    });
+
+    columnManageButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            openManageColumnDialog(button.closest("th"));
+        });
     });
 </script>
 </body>

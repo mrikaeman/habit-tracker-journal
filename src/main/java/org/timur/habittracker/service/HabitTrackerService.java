@@ -23,15 +23,6 @@ import java.util.Map;
 @Transactional
 public class HabitTrackerService {
 
-    private static final List<DefaultHabitDefinition> DEFAULT_HABITS = List.of(
-            new DefaultHabitDefinition("Exercise", HabitType.CHECKBOX),
-            new DefaultHabitDefinition("Meditation", HabitType.CHECKBOX),
-            new DefaultHabitDefinition("Reading", HabitType.CHECKBOX),
-            new DefaultHabitDefinition("Mood", HabitType.RATING),
-            new DefaultHabitDefinition("Sleep", HabitType.RATING),
-            new DefaultHabitDefinition("Stress", HabitType.RATING)
-    );
-
     private final HabitDefinitionRepository habitDefinitionRepository;
     private final DayEntryRepository dayEntryRepository;
     private final HabitRecordRepository habitRecordRepository;
@@ -45,24 +36,7 @@ public class HabitTrackerService {
     }
 
     public void initializeDefaults() {
-        for (DefaultHabitDefinition defaultHabit : DEFAULT_HABITS) {
-            habitDefinitionRepository.findByName(defaultHabit.name())
-                    .orElseGet(() -> habitDefinitionRepository.save(
-                            new HabitDefinition(defaultHabit.name(), defaultHabit.type())
-                    ));
-        }
-
         getOrCreateDayEntry(LocalDate.now());
-    }
-
-    public TrackerOverview getTrackerOverview() {
-        DayEntry todayEntry = getOrCreateDayEntry(LocalDate.now());
-        List<HabitDefinition> definitions = getHabitDefinitions();
-        List<HabitRecord> todayRecords = getOrCreateHabitRecords(todayEntry, definitions);
-        List<DayEntry> recentEntries = new ArrayList<>(dayEntryRepository.findTop31ByOrderByDateDesc());
-        recentEntries.sort(Comparator.comparing(DayEntry::getDate));
-
-        return new TrackerOverview(todayEntry, definitions, todayRecords, recentEntries);
     }
 
     @Transactional(readOnly = true)
@@ -99,6 +73,92 @@ public class HabitTrackerService {
         return dayEntryRepository.save(dayEntry);
     }
 
+    public HabitDefinition createHabitDefinition(String name, HabitType type, Integer ratingScaleMax) {
+        String normalizedName = name == null ? "" : name.trim();
+        if (normalizedName.isEmpty()) {
+            throw new IllegalArgumentException("Column name is required.");
+        }
+
+        if (habitDefinitionRepository.findByName(normalizedName).isPresent()) {
+            throw new IllegalArgumentException("A column with that name already exists.");
+        }
+
+        Integer normalizedScale = null;
+        if (type == HabitType.RATING) {
+            if (ratingScaleMax == null || ratingScaleMax < 1) {
+                throw new IllegalArgumentException("Rating scale must be at least 1.");
+            }
+            normalizedScale = ratingScaleMax;
+        }
+
+        return habitDefinitionRepository.save(new HabitDefinition(normalizedName, type, normalizedScale));
+    }
+
+    public HabitDefinition renameHabitDefinition(Long habitDefinitionId, String name) {
+        HabitDefinition habitDefinition = getHabitDefinition(habitDefinitionId);
+        String normalizedName = name == null ? "" : name.trim();
+        if (normalizedName.isEmpty()) {
+            throw new IllegalArgumentException("Column name is required.");
+        }
+
+        HabitDefinition existingDefinition = habitDefinitionRepository.findByName(normalizedName).orElse(null);
+        if (existingDefinition != null && !existingDefinition.getId().equals(habitDefinitionId)) {
+            throw new IllegalArgumentException("A column with that name already exists.");
+        }
+
+        habitDefinition.setName(normalizedName);
+        return habitDefinitionRepository.save(habitDefinition);
+    }
+
+    public void deleteHabitDefinition(Long habitDefinitionId) {
+        HabitDefinition habitDefinition = getHabitDefinition(habitDefinitionId);
+        habitRecordRepository.deleteByHabitDefinition(habitDefinition);
+        habitDefinitionRepository.delete(habitDefinition);
+    }
+
+    public HabitRecord updateCheckboxRecord(LocalDate date, Long habitDefinitionId, boolean checked, Integer numericValue) {
+        HabitDefinition habitDefinition = getHabitDefinition(habitDefinitionId);
+        DayEntry dayEntry = getOrCreateDayEntry(date);
+        HabitRecord habitRecord = getOrCreateHabitRecord(dayEntry, habitDefinition);
+
+        if (habitDefinition.getType() != HabitType.CHECKBOX) {
+            throw new IllegalArgumentException("The selected column is not a checkbox column.");
+        }
+
+        if (!checked) {
+            habitRecord.setCheckedValue(false);
+            habitRecord.setNumericValue(null);
+            return habitRecordRepository.save(habitRecord);
+        }
+
+        if (numericValue == null || numericValue < 1 || numericValue > 10) {
+            throw new IllegalArgumentException("Checkbox ratings must be between 1 and 10.");
+        }
+
+        habitRecord.setCheckedValue(true);
+        habitRecord.setNumericValue(numericValue);
+        return habitRecordRepository.save(habitRecord);
+    }
+
+    public HabitRecord updateRatingRecord(LocalDate date, Long habitDefinitionId, Integer numericValue) {
+        HabitDefinition habitDefinition = getHabitDefinition(habitDefinitionId);
+        DayEntry dayEntry = getOrCreateDayEntry(date);
+        HabitRecord habitRecord = getOrCreateHabitRecord(dayEntry, habitDefinition);
+
+        if (habitDefinition.getType() != HabitType.RATING) {
+            throw new IllegalArgumentException("The selected column is not a rating column.");
+        }
+
+        Integer scaleMax = habitDefinition.getRatingScaleMax();
+        if (numericValue == null || numericValue < 1 || scaleMax == null || numericValue > scaleMax) {
+            throw new IllegalArgumentException("Rating must be within the configured scale.");
+        }
+
+        habitRecord.setCheckedValue(null);
+        habitRecord.setNumericValue(numericValue);
+        return habitRecordRepository.save(habitRecord);
+    }
+
     @Transactional(readOnly = true)
     public List<HabitDefinition> getHabitDefinitions() {
         return habitDefinitionRepository.findAll()
@@ -112,35 +172,13 @@ public class HabitTrackerService {
                 .orElseGet(() -> dayEntryRepository.save(new DayEntry(date)));
     }
 
-    public List<HabitRecord> getOrCreateHabitRecords(DayEntry dayEntry, List<HabitDefinition> definitions) {
-        List<HabitRecord> existingRecords = habitRecordRepository.findByDayEntryOrderByHabitDefinitionName(dayEntry);
-        if (existingRecords.size() == definitions.size()) {
-            return existingRecords;
-        }
-
-        for (HabitDefinition definition : definitions) {
-            boolean recordExists = existingRecords.stream()
-                    .anyMatch(record -> record.getHabitDefinition().getId().equals(definition.getId()));
-
-            if (!recordExists) {
-                HabitRecord habitRecord = new HabitRecord(dayEntry, definition);
-                habitRecordRepository.save(habitRecord);
-                existingRecords.add(habitRecord);
-            }
-        }
-
-        existingRecords.sort(Comparator.comparing(record -> record.getHabitDefinition().getName()));
-        return existingRecords;
+    public HabitDefinition getHabitDefinition(Long habitDefinitionId) {
+        return habitDefinitionRepository.findById(habitDefinitionId)
+                .orElseThrow(() -> new IllegalArgumentException("Column not found."));
     }
 
-    public record TrackerOverview(
-            DayEntry todayEntry,
-            List<HabitDefinition> habitDefinitions,
-            List<HabitRecord> todayRecords,
-            List<DayEntry> recentEntries
-    ) {
-    }
-
-    private record DefaultHabitDefinition(String name, HabitType type) {
+    public HabitRecord getOrCreateHabitRecord(DayEntry dayEntry, HabitDefinition habitDefinition) {
+        return habitRecordRepository.findByDayEntryAndHabitDefinition(dayEntry, habitDefinition)
+                .orElseGet(() -> habitRecordRepository.save(new HabitRecord(dayEntry, habitDefinition)));
     }
 }

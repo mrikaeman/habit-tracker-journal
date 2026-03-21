@@ -22,12 +22,21 @@ public class HabitDefinition {
     @Column(nullable = false)
     private HabitType type;
 
+    @Column
+    private Integer ratingScaleMax;
+
     public HabitDefinition() {
     }
 
     public HabitDefinition(String name, HabitType type) {
         this.name = name;
         this.type = type;
+    }
+
+    public HabitDefinition(String name, HabitType type, Integer ratingScaleMax) {
+        this.name = name;
+        this.type = type;
+        this.ratingScaleMax = ratingScaleMax;
     }
 
     public Long getId() {
@@ -38,7 +47,15 @@ public class HabitDefinition {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public HabitType getType() {
         return type;
+    }
+
+    public Integer getRatingScaleMax() {
+        return ratingScaleMax;
     }
 }
