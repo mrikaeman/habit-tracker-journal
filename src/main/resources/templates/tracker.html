@@ -54,11 +54,28 @@
 
         .highlight-column {
             min-width: 240px;
+            max-width: 240px;
         }
 
         .habit-column {
             min-width: 90px;
             text-align: center;
+        }
+
+        .highlight-cell {
+            cursor: pointer;
+        }
+
+        .highlight-text {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .highlight-placeholder {
+            color: #888;
+            font-style: italic;
         }
 
         .month-table td.habit-cell {
@@ -67,6 +84,55 @@
 
         .muted {
             color: #666;
+        }
+
+        dialog {
+            border: none;
+            border-radius: 12px;
+            padding: 0;
+            width: min(480px, calc(100% - 32px));
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        dialog::backdrop {
+            background: rgba(34, 34, 34, 0.35);
+        }
+
+        .dialog-content {
+            padding: 20px;
+        }
+
+        .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #2d72d9;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button.secondary {
+            background-color: #e3e7ee;
+            color: #222;
         }
     </style>
 </head>
@@ -89,7 +155,14 @@
             <tbody>
             <tr th:each="row : ${monthRows}">
                 <td class="day-column" th:text="${row.date.dayOfMonth}">1</td>
-                <td class="highlight-column" th:text="${row.dailyHighlight}"></td>
+                <td class="highlight-column highlight-cell">
+                    <div class="highlight-text"
+                         th:attr="data-date=${row.date},data-highlight=${row.dailyHighlight},title=${row.dailyHighlight}"
+                         th:text="${row.dailyHighlight != null and !#strings.isEmpty(row.dailyHighlight) ? row.dailyHighlight : 'Click to add highlight'}"
+                         th:classappend="${row.dailyHighlight == null or #strings.isEmpty(row.dailyHighlight)} ? ' highlight-placeholder' : ''">
+                        Click to add highlight
+                    </div>
+                </td>
                 <td class="habit-cell"
                     th:each="definition : ${habitDefinitions}"
                     th:with="record=${row.recordsByHabitId[definition.id]}"
@@ -100,5 +173,50 @@
         </table>
     </div>
 </div>
+
+<dialog id="highlightDialog">
+    <div class="dialog-content">
+        <h2>Edit Highlight</h2>
+        <p class="muted" id="highlightDialogDate">2026-03-21</p>
+
+        <form action="/highlight" method="post" id="highlightForm">
+            <input type="hidden" id="highlightDateInput" name="date">
+            <label for="highlightTextarea">Daily highlight</label>
+            <textarea id="highlightTextarea" name="dailyHighlight" maxlength="500"></textarea>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelHighlightButton">Cancel</button>
+                <button type="submit">OK</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<script>
+    const highlightDialog = document.getElementById("highlightDialog");
+    const highlightDateInput = document.getElementById("highlightDateInput");
+    const highlightDialogDate = document.getElementById("highlightDialogDate");
+    const highlightTextarea = document.getElementById("highlightTextarea");
+    const cancelHighlightButton = document.getElementById("cancelHighlightButton");
+    const highlightFields = document.querySelectorAll(".highlight-text");
+
+    function openHighlightDialog(date, highlight) {
+        highlightDateInput.value = date;
+        highlightDialogDate.textContent = date;
+        highlightTextarea.value = highlight || "";
+        highlightDialog.showModal();
+        highlightTextarea.focus();
+    }
+
+    highlightFields.forEach(function (field) {
+        field.addEventListener("click", function () {
+            openHighlightDialog(field.dataset.date, field.dataset.highlight);
+        });
+    });
+
+    cancelHighlightButton.addEventListener("click", function () {
+        highlightDialog.close();
+    });
+</script>
 </body>
 </html>
