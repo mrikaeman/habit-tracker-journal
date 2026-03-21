@@ -9,11 +9,15 @@ import org.timur.habittracker.model.HabitType;
 import org.timur.habittracker.repository.DayEntryRepository;
 import org.timur.habittracker.repository.HabitDefinitionRepository;
 import org.timur.habittracker.repository.HabitRecordRepository;
+import org.timur.habittracker.view.MonthDayView;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -59,6 +63,34 @@ public class HabitTrackerService {
         recentEntries.sort(Comparator.comparing(DayEntry::getDate));
 
         return new TrackerOverview(todayEntry, definitions, todayRecords, recentEntries);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthDayView> buildCurrentMonthView() {
+        LocalDate currentDate = LocalDate.now();
+        YearMonth currentMonth = YearMonth.from(currentDate);
+        LocalDate firstDayOfMonth = currentMonth.atDay(1);
+        LocalDate lastDayOfMonth = currentMonth.atEndOfMonth();
+
+        List<MonthDayView> monthRows = new ArrayList<>();
+        for (LocalDate date = firstDayOfMonth; !date.isAfter(lastDayOfMonth); date = date.plusDays(1)) {
+            DayEntry dayEntry = dayEntryRepository.findByDate(date).orElse(null);
+            String dailyHighlight = "";
+            Map<Long, HabitRecord> recordsByHabitId = new HashMap<>();
+
+            if (dayEntry != null) {
+                dailyHighlight = dayEntry.getDailyHighlight() == null ? "" : dayEntry.getDailyHighlight();
+
+                List<HabitRecord> records = habitRecordRepository.findByDayEntry(dayEntry);
+                for (HabitRecord record : records) {
+                    recordsByHabitId.put(record.getHabitDefinition().getId(), record);
+                }
+            }
+
+            monthRows.add(new MonthDayView(date, dailyHighlight, recordsByHabitId));
+        }
+
+        return monthRows;
     }
 
     public DayEntry updateDailyHighlight(LocalDate date, String dailyHighlight) {

@@ -7,5 +7,7 @@ import org.timur.habittracker.model.HabitRecord;
 import java.util.List;
 
 public interface HabitRecordRepository extends JpaRepository<HabitRecord, Long> {
+    List<HabitRecord> findByDayEntry(DayEntry dayEntry);
+
     List<HabitRecord> findByDayEntryOrderByHabitDefinitionName(DayEntry dayEntry);
 }
