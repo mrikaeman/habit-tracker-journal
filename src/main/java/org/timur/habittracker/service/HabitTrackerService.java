@@ -2,6 +2,7 @@ package org.timur.habittracker.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.timur.habittracker.model.DayEntry;
 import org.timur.habittracker.model.HabitDefinition;
 import org.timur.habittracker.model.HabitRecord;
@@ -10,21 +11,42 @@ import org.timur.habittracker.repository.DayEntryRepository;
 import org.timur.habittracker.repository.HabitDefinitionRepository;
 import org.timur.habittracker.repository.HabitRecordRepository;
 import org.timur.habittracker.view.MonthDayView;
+import org.timur.habittracker.view.MonthOptionView;
+import org.timur.habittracker.view.MonthPhotoView;
 import org.timur.habittracker.view.MonthRatingGraphView;
 import org.timur.habittracker.view.MonthRatingPointView;
 import org.timur.habittracker.view.MonthRatingSegmentView;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @Transactional
 public class HabitTrackerService {
+
+    private static final DateTimeFormatter MONTH_LABEL_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
+    private static final Path MONTH_PHOTO_ROOT = Paths.get("data", "month-photos");
+    private static final Set<String> SUPPORTED_IMAGE_EXTENSIONS = Set.of(
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif"
+    );
+    private static final Set<String> BROWSER_PREVIEW_EXTENSIONS = Set.of(
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"
+    );
 
     private final HabitDefinitionRepository habitDefinitionRepository;
     private final DayEntryRepository dayEntryRepository;
@@ -43,10 +65,9 @@ public class HabitTrackerService {
     }
 
     @Transactional(readOnly = true)
-    public List<MonthDayView> buildCurrentMonthView() {
-        YearMonth currentMonth = YearMonth.now();
-        LocalDate firstDayOfMonth = currentMonth.atDay(1);
-        LocalDate lastDayOfMonth = currentMonth.atEndOfMonth();
+    public List<MonthDayView> buildMonthView(YearMonth month) {
+        LocalDate firstDayOfMonth = month.atDay(1);
+        LocalDate lastDayOfMonth = month.atEndOfMonth();
 
         List<MonthDayView> monthRows = new ArrayList<>();
         for (LocalDate date = firstDayOfMonth; !date.isAfter(lastDayOfMonth); date = date.plusDays(1)) {
@@ -77,8 +98,8 @@ public class HabitTrackerService {
     }
 
     @Transactional(readOnly = true)
-    public List<MonthRatingGraphView> buildCurrentMonthRatingGraphs() {
-        List<MonthDayView> monthRows = buildCurrentMonthView();
+    public List<MonthRatingGraphView> buildMonthRatingGraphs(YearMonth month) {
+        List<MonthDayView> monthRows = buildMonthView(month);
         List<HabitDefinition> ratingDefinitions = getHabitDefinitions().stream()
                 .filter(definition -> definition.getType() == HabitType.RATING)
                 .toList();
@@ -89,6 +110,119 @@ public class HabitTrackerService {
         }
 
         return ratingGraphs;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthOptionView> buildMonthOptions(YearMonth selectedMonth) {
+        YearMonth currentMonth = YearMonth.now();
+        YearMonth firstEntryMonth = dayEntryRepository.findFirstByOrderByDateAsc()
+                .map(dayEntry -> YearMonth.from(dayEntry.getDate()))
+                .orElse(currentMonth);
+        YearMonth firstPhotoMonth = findFirstPhotoMonth().orElse(firstEntryMonth);
+        YearMonth firstAvailableMonth = firstPhotoMonth.isBefore(firstEntryMonth) ? firstPhotoMonth : firstEntryMonth;
+        YearMonth lastAvailableMonth = currentMonth.plusMonths(2);
+
+        if (selectedMonth.isBefore(firstAvailableMonth)) {
+            selectedMonth = firstAvailableMonth;
+        }
+        if (selectedMonth.isAfter(lastAvailableMonth)) {
+            selectedMonth = lastAvailableMonth;
+        }
+
+        List<MonthOptionView> monthOptions = new ArrayList<>();
+        for (YearMonth month = firstAvailableMonth; !month.isAfter(lastAvailableMonth); month = month.plusMonths(1)) {
+            monthOptions.add(new MonthOptionView(
+                    month.toString(),
+                    MONTH_LABEL_FORMATTER.format(month.atDay(1)),
+                    month.equals(selectedMonth)
+            ));
+        }
+
+        return monthOptions;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthPhotoView> getMonthPhotos(YearMonth month) {
+        List<MonthPhotoView> monthPhotos = new ArrayList<>();
+        Path monthDirectory = getMonthPhotoDirectory(month);
+        if (!Files.isDirectory(monthDirectory)) {
+            return monthPhotos;
+        }
+
+        try (var paths = Files.list(monthDirectory).sorted()) {
+            paths.filter(Files::isRegularFile)
+                    .forEach(path -> {
+                        MonthPhotoView monthPhoto = buildMonthPhotoView(path);
+                        if (monthPhoto != null) {
+                            monthPhotos.add(monthPhoto);
+                        }
+                    });
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not load month photos.", exception);
+        }
+
+        return monthPhotos;
+    }
+
+    public void addMonthPhotos(YearMonth month, MultipartFile[] photos) {
+        if (photos == null || photos.length == 0) {
+            return;
+        }
+
+        Path monthDirectory = getMonthPhotoDirectory(month);
+
+        try {
+            Files.createDirectories(monthDirectory);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not prepare month photo storage.", exception);
+        }
+
+        for (MultipartFile photo : photos) {
+            if (photo == null || photo.isEmpty()) {
+                continue;
+            }
+
+            String contentType = photo.getContentType();
+            String extension = resolveFileExtension(photo.getOriginalFilename(), contentType);
+            if (!isSupportedImageFile(contentType, extension)) {
+                throw new IllegalArgumentException("Only image uploads are supported.");
+            }
+
+            String fileName = UUID.randomUUID() + extension;
+            Path targetPath = monthDirectory.resolve(fileName);
+
+            try {
+                Files.copy(photo.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException exception) {
+                throw new IllegalStateException("Could not save uploaded photo.", exception);
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Path getMonthPhotoPath(YearMonth month, String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("Photo file name is required.");
+        }
+
+        Path monthDirectory = getMonthPhotoDirectory(month).normalize().toAbsolutePath();
+        Path photoPath = monthDirectory.resolve(fileName).normalize().toAbsolutePath();
+
+        if (!photoPath.startsWith(monthDirectory) || !Files.isRegularFile(photoPath)) {
+            throw new IllegalArgumentException("Photo not found.");
+        }
+
+        return photoPath;
+    }
+
+    public void deleteMonthPhoto(YearMonth month, String fileName) {
+        Path photoPath = getMonthPhotoPath(month, fileName);
+
+        try {
+            Files.deleteIfExists(photoPath);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not delete saved photo.", exception);
+        }
     }
 
     public DayEntry updateDailyHighlight(LocalDate date, String dailyHighlight) {
@@ -259,5 +393,96 @@ public class HabitTrackerService {
         }
 
         return ((double) (value - scaleMin) / (scaleMax - scaleMin)) * 100.0;
+    }
+
+    private Optional<YearMonth> findFirstPhotoMonth() {
+        if (!Files.isDirectory(MONTH_PHOTO_ROOT)) {
+            return Optional.empty();
+        }
+
+        try (var paths = Files.list(MONTH_PHOTO_ROOT).sorted()) {
+            return paths.filter(Files::isDirectory)
+                    .map(this::parseYearMonthDirectory)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .findFirst();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not inspect saved month photos.", exception);
+        }
+    }
+
+    private Optional<YearMonth> parseYearMonthDirectory(Path path) {
+        try {
+            return Optional.of(YearMonth.parse(path.getFileName().toString()));
+        } catch (RuntimeException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private Path getMonthPhotoDirectory(YearMonth month) {
+        return MONTH_PHOTO_ROOT.resolve(month.toString());
+    }
+
+    private MonthPhotoView buildMonthPhotoView(Path path) {
+        String fileName = path.getFileName().toString();
+        if (!isSupportedImageFile(null, getFileExtension(fileName))) {
+            return null;
+        }
+
+        return new MonthPhotoView(fileName, isBrowserPreviewable(fileName));
+    }
+
+    private String resolveFileExtension(String originalFilename, String contentType) {
+        String originalExtension = getFileExtension(originalFilename);
+        if (SUPPORTED_IMAGE_EXTENSIONS.contains(originalExtension)) {
+            return originalExtension;
+        }
+
+        return switch (contentType) {
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case "image/bmp" -> ".bmp";
+            case "image/heic" -> ".heic";
+            case "image/heif" -> ".heif";
+            default -> ".jpg";
+        };
+    }
+
+    public String resolvePhotoContentType(String fileName) {
+        return switch (getFileExtension(fileName)) {
+            case ".png" -> "image/png";
+            case ".gif" -> "image/gif";
+            case ".webp" -> "image/webp";
+            case ".bmp" -> "image/bmp";
+            case ".heic" -> "image/heic";
+            case ".heif" -> "image/heif";
+            default -> "image/jpeg";
+        };
+    }
+
+    private boolean isBrowserPreviewable(String fileName) {
+        return BROWSER_PREVIEW_EXTENSIONS.contains(getFileExtension(fileName));
+    }
+
+    private boolean isSupportedImageFile(String contentType, String extension) {
+        if (contentType != null && contentType.startsWith("image/")) {
+            return true;
+        }
+
+        return SUPPORTED_IMAGE_EXTENSIONS.contains(extension);
+    }
+
+    private String getFileExtension(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+
+        int extensionIndex = fileName.lastIndexOf('.');
+        if (extensionIndex < 0) {
+            return "";
+        }
+
+        return fileName.substring(extensionIndex).toLowerCase(Locale.ENGLISH);
     }
 }

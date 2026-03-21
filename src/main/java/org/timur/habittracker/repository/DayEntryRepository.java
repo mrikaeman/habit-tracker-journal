@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface DayEntryRepository extends JpaRepository<DayEntry, Long> {
     Optional<DayEntry> findByDate(LocalDate date);
 
+    Optional<DayEntry> findFirstByOrderByDateAsc();
+
     List<DayEntry> findTop31ByOrderByDateDesc();
 }

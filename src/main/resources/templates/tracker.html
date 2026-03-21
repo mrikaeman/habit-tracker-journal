@@ -3,385 +3,186 @@
 <head>
     <title>Habit Tracker</title>
     <meta charset="UTF-8">
-    <style>
-        :root {
-            --month-row-height: 48px;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7fb;
-            margin: 0;
-            padding: 0;
-            color: #222;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 40px auto;
-            padding: 20px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        h1, h2 {
-            margin-top: 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #e3e7ee;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        thead th {
-            background-color: #eef3fb;
-        }
-
-        .month-row {
-            height: var(--month-row-height);
-        }
-
-        .day-column {
-            width: 70px;
-            text-align: center;
-        }
-
-        .highlight-column {
-            min-width: 240px;
-            max-width: 240px;
-        }
-
-        .habit-column {
-            min-width: 110px;
-            text-align: center;
-        }
-
-        .rating-graph-column {
-            min-width: 160px;
-            text-align: center;
-        }
-
-        .habit-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .habit-name {
-            line-height: 1.3;
-        }
-
-        .add-column-cell {
-            width: 60px;
-            text-align: center;
-        }
-
-        .highlight-cell {
-            cursor: pointer;
-        }
-
-        .highlight-text {
-            display: block;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .highlight-placeholder {
-            color: #888;
-            font-style: italic;
-        }
-
-        .habit-cell {
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .checkbox-input {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .rating-graph-cell {
-            padding: 0;
-            vertical-align: top;
-            background: linear-gradient(to right, rgba(45, 114, 217, 0.04), rgba(45, 114, 217, 0.1));
-        }
-
-        .rating-graph-shell {
-            position: relative;
-            min-height: calc(var(--month-row-height) * 28);
-        }
-
-        .rating-graph-svg {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        .rating-guide-line {
-            stroke: rgba(45, 114, 217, 0.18);
-            stroke-width: 0.7;
-            stroke-dasharray: 3 3;
-        }
-
-        .rating-line-segment {
-            stroke: #355f9f;
-            stroke-width: 1.1;
-            stroke-linecap: round;
-        }
-
-        .rating-points-layer {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
-
-        .rating-point-dot {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            margin-left: -4px;
-            margin-top: -4px;
-            border-radius: 50%;
-            background: #355f9f;
-            pointer-events: none;
-        }
-
-        .rating-hit-grid {
-            position: absolute;
-            inset: 0;
-            display: grid;
-        }
-
-        .rating-hit-row {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            padding: 0;
-        }
-
-        .rating-hit-row:hover {
-            background: rgba(53, 95, 159, 0.06);
-        }
-
-        .muted {
-            color: #666;
-        }
-
-        dialog {
-            border: none;
-            border-radius: 12px;
-            padding: 0;
-            width: min(480px, calc(100% - 32px));
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        dialog::backdrop {
-            background: rgba(34, 34, 34, 0.35);
-        }
-
-        .dialog-content {
-            padding: 20px;
-        }
-
-        .dialog-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        .field-group {
-            margin-top: 12px;
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 14px;
-            resize: vertical;
-        }
-
-        input[type="text"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        button {
-            background-color: #2d72d9;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .add-column-button {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            padding: 0;
-            font-size: 22px;
-            line-height: 1;
-        }
-
-        button.secondary {
-            background-color: #e3e7ee;
-            color: #222;
-        }
-
-        button.danger {
-            background-color: #c94444;
-        }
-
-        .column-manage-button {
-            background-color: #eef3fb;
-            color: #222;
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" th:href="@{/css/tracker.css}">
 </head>
 <body>
-<div class="container">
-    <div class="card">
-        <h1 th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">March 2026</h1>
-        <p class="muted">Checkbox habits stay row by row. Rating habits render as month-long graph columns.</p>
-    </div>
+<div class="page-shell">
+    <header class="page-header">
+        <div class="eyebrow" th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">March 2026</div>
+        <h1 class="page-title">Habit Tracker Journal</h1>
+        <p class="page-subtitle">
+            A calm monthly view for highlights, habits, and rating patterns.
+        </p>
+    </header>
 
-    <div class="card">
-        <table class="month-table">
-            <thead>
-            <tr>
-                <th class="day-column">Day</th>
-                <th class="highlight-column">Daily Highlight</th>
-                <th class="habit-column"
-                    th:each="definition : ${checkboxHabitDefinitions}"
-                    th:attr="data-habit-id=${definition.id},
-                             data-habit-name=${definition.name},
-                             data-habit-type=${definition.type.name()},
-                             data-scale-max=${definition.ratingScaleMax}">
-                    <div class="habit-header">
-                        <span class="habit-name" th:text="${definition.name}">Exercise</span>
-                        <button type="button" class="column-manage-button">Edit</button>
+    <div class="content-stack">
+        <section class="card table-card">
+            <div class="table-card-header">
+                <div>
+                    <h2 class="section-title">Monthly Tracker</h2>
+                    <p class="section-subtitle">Review each day, update your highlight, and keep the month visible as one reflective page.</p>
+                </div>
+                <div class="header-actions">
+                    <details class="month-switcher">
+                        <summary class="month-badge" th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">March 2026</summary>
+                        <div class="month-switcher-menu">
+                            <a class="month-switcher-link"
+                               th:each="monthOption : ${monthOptions}"
+                               th:href="@{/(month=${monthOption.value})}"
+                               th:text="${monthOption.label}"
+                               th:classappend="${monthOption.selected} ? ' active' : ''">
+                                March 2026
+                            </a>
+                        </div>
+                    </details>
+                    <button type="button" class="month-badge month-photo-button" id="openPhotoDialogButton">Photos</button>
+                </div>
+            </div>
+
+            <section class="month-photos-card">
+                <div class="month-photos-header">
+                    <div>
+                        <h3 class="month-photos-title">Monthly Photo Montage</h3>
                     </div>
-                </th>
-                <th class="rating-graph-column"
-                    th:each="graph : ${ratingHabitGraphs}"
-                    th:attr="data-habit-id=${graph.habitDefinition.id},
-                             data-habit-name=${graph.habitDefinition.name},
-                             data-habit-type=${graph.habitDefinition.type.name()},
-                             data-scale-max=${graph.scaleMax}">
-                    <div class="habit-header">
-                        <span class="habit-name"
-                              th:text="${graph.habitDefinition.name + ' (' + graph.scaleMin + '-' + graph.scaleMax + ')'}">
-                            Mood
-                        </span>
-                        <button type="button" class="column-manage-button">Edit</button>
-                    </div>
-                </th>
-                <th class="add-column-cell">
-                    <button type="button" class="add-column-button" id="openAddColumnButton">+</button>
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="row, rowStat : ${monthRows}" class="month-row">
-                <td class="day-column" th:text="${row.date.dayOfMonth}">1</td>
-                <td class="highlight-column highlight-cell">
-                    <div class="highlight-text"
-                         th:attr="data-date=${row.date},data-highlight=${row.dailyHighlight},title=${row.dailyHighlight}"
-                         th:text="${row.dailyHighlight != null and !#strings.isEmpty(row.dailyHighlight) ? row.dailyHighlight : 'Click to add highlight'}"
-                         th:classappend="${row.dailyHighlight == null or #strings.isEmpty(row.dailyHighlight)} ? ' highlight-placeholder' : ''">
-                        Click to add highlight
-                    </div>
-                </td>
-                <td class="habit-cell"
-                    th:each="definition : ${checkboxHabitDefinitions}"
-                    th:with="record=${row.recordsByHabitId[definition.id]}"
-                    th:attr="data-date=${row.date},
-                             data-habit-id=${definition.id},
-                             data-habit-name=${definition.name},
-                             data-scale-max=${definition.ratingScaleMax},
-                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
-                    <input type="checkbox"
-                           class="checkbox-input"
-                           th:checked="${record != null and record.checkedValue == true}">
-                </td>
-                <td class="rating-graph-cell"
-                    th:if="${rowStat.index == 0}"
-                    th:each="graph : ${ratingHabitGraphs}"
-                    th:attr="rowspan=${monthRows.size()}">
-                    <div class="rating-graph-shell"
-                         th:style="'height: calc(var(--month-row-height) * ' + ${monthRows.size()} + ');'">
-                        <svg class="rating-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <line class="rating-guide-line" x1="0" y1="0" x2="0" y2="100"></line>
-                            <line class="rating-guide-line" x1="50" y1="0" x2="50" y2="100"></line>
-                            <line class="rating-guide-line" x1="100" y1="0" x2="100" y2="100"></line>
+                    <span class="month-photo-count" th:text="${monthPhotos.size()} + ' photo' + (${monthPhotos.size()} == 1 ? '' : 's')">0 photos</span>
+                </div>
 
-                            <line class="rating-line-segment"
-                                  th:each="segment : ${graph.segments}"
-                                  th:attr="x1=${segment.x1},y1=${segment.y1},x2=${segment.x2},y2=${segment.y2},vector-effect='non-scaling-stroke'">
-                            </line>
+                <div class="month-photos-montage" th:if="${!monthPhotos.isEmpty()}">
+                    <figure class="month-photo-frame"
+                            th:each="photo, photoStat : ${monthPhotos}"
+                            th:classappend="${photoStat.index % 5 == 0} ? ' wide' : (${photoStat.index % 7 == 0} ? ' tall' : '')">
+                        <button type="button"
+                                class="month-photo-open-button"
+                                th:if="${photo.previewable}"
+                                th:attr="data-photo-src=@{/photos/view(month=${currentMonthValue},file=${photo.fileName})},data-photo-name=${photo.fileName}">
+                            <img th:src="@{/photos/view(month=${currentMonthValue},file=${photo.fileName})}"
+                                 th:alt="${photo.fileName}">
+                        </button>
+                        <div class="month-photo-unsupported" th:if="${!photo.previewable}">
+                            <span class="month-photo-unsupported-label">Preview unavailable</span>
+                            <span class="month-photo-unsupported-name" th:text="${photo.fileName}">photo.heic</span>
+                        </div>
+                        <form action="/photos/delete" method="post" class="month-photo-delete-form">
+                            <input type="hidden" name="month" th:value="${currentMonthValue}">
+                            <input type="hidden" name="file" th:value="${photo.fileName}">
+                            <button type="submit" class="month-photo-delete-button">Delete</button>
+                        </form>
+                    </figure>
+                </div>
 
-                        </svg>
+                <div class="month-photos-empty" th:if="${monthPhotos.isEmpty()}">
+                    <p>No photos saved for this month yet.</p>
+                    <button type="button" class="secondary" id="openEmptyPhotoDialogButton">Add Photos</button>
+                </div>
+            </section>
 
-                        <div class="rating-points-layer">
-                            <div class="rating-point-dot"
-                                 th:each="point : ${graph.points}"
-                                 th:style="'left:' + ${point.x} + '%; top:' + ${point.y} + '%;'">
+            <div class="table-shell">
+                <table class="month-table">
+                    <thead>
+                    <tr>
+                        <th class="day-column">Day</th>
+                        <th class="highlight-column">Daily Highlight</th>
+                        <th class="habit-column"
+                            th:each="definition : ${checkboxHabitDefinitions}"
+                            th:attr="data-habit-id=${definition.id},
+                                     data-habit-name=${definition.name},
+                                     data-habit-type=${definition.type.name()},
+                                     data-scale-max=${definition.ratingScaleMax}">
+                            <div class="habit-header">
+                                <span class="habit-name" th:text="${definition.name}">Exercise</span>
+                                <button type="button" class="column-manage-button">Edit</button>
                             </div>
-                        </div>
+                        </th>
+                        <th class="rating-graph-column"
+                            th:each="graph : ${ratingHabitGraphs}"
+                            th:attr="data-habit-id=${graph.habitDefinition.id},
+                                     data-habit-name=${graph.habitDefinition.name},
+                                     data-habit-type=${graph.habitDefinition.type.name()},
+                                     data-scale-max=${graph.scaleMax}">
+                            <div class="habit-header">
+                                <span class="habit-name"
+                                      th:text="${graph.habitDefinition.name + ' (' + graph.scaleMin + '-' + graph.scaleMax + ')'}">
+                                    Mood
+                                </span>
+                                <button type="button" class="column-manage-button">Edit</button>
+                            </div>
+                        </th>
+                        <th class="add-column-cell">
+                            <button type="button" class="add-column-button" id="openAddColumnButton">+</button>
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row, rowStat : ${monthRows}" class="month-row">
+                        <td class="day-column" th:text="${row.date.dayOfMonth}">1</td>
+                        <td class="highlight-column highlight-cell">
+                            <div class="highlight-text"
+                                 th:attr="data-date=${row.date},data-highlight=${row.dailyHighlight},title=${row.dailyHighlight}"
+                                 th:text="${row.dailyHighlight != null and !#strings.isEmpty(row.dailyHighlight) ? row.dailyHighlight : 'Click to add highlight'}"
+                                 th:classappend="${row.dailyHighlight == null or #strings.isEmpty(row.dailyHighlight)} ? ' highlight-placeholder' : ''">
+                                Click to add highlight
+                            </div>
+                        </td>
+                        <td class="habit-cell"
+                            th:each="definition : ${checkboxHabitDefinitions}"
+                            th:with="record=${row.recordsByHabitId[definition.id]}"
+                            th:classappend="${record == null or record.checkedValue == null or !record.checkedValue} ? ' empty' : ''"
+                            th:attr="data-date=${row.date},
+                                     data-habit-id=${definition.id},
+                                     data-habit-name=${definition.name},
+                                     data-scale-max=${definition.ratingScaleMax},
+                                     data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
+                            <input type="checkbox"
+                                   class="checkbox-input"
+                                   th:checked="${record != null and record.checkedValue == true}">
+                        </td>
+                        <td class="rating-graph-cell"
+                            th:if="${rowStat.index == 0}"
+                            th:each="graph : ${ratingHabitGraphs}"
+                            th:attr="rowspan=${monthRows.size()}">
+                            <div class="rating-graph-shell"
+                                 th:style="'height: calc(var(--month-row-height) * ' + ${monthRows.size()} + ');'">
+                                <svg class="rating-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <line class="rating-guide-line" x1="0" y1="0" x2="0" y2="100"></line>
+                                    <line class="rating-guide-line" x1="50" y1="0" x2="50" y2="100"></line>
+                                    <line class="rating-guide-line" x1="100" y1="0" x2="100" y2="100"></line>
 
-                        <div class="rating-hit-grid"
-                             th:style="'grid-template-rows: repeat(' + ${monthRows.size()} + ', 1fr);'">
-                            <button type="button"
-                                    class="rating-hit-row"
-                                    th:each="graphRow : ${monthRows}"
-                                    th:with="record=${graphRow.recordsByHabitId[graph.habitDefinition.id]}"
-                                    th:attr="data-date=${graphRow.date},
-                                             data-habit-id=${graph.habitDefinition.id},
-                                             data-habit-name=${graph.habitDefinition.name},
-                                             data-scale-max=${graph.scaleMax},
-                                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
-                            </button>
-                        </div>
-                    </div>
-                </td>
-                <td class="add-column-cell"></td>
-            </tr>
-            </tbody>
-        </table>
+                                    <line class="rating-line-segment"
+                                          th:each="segment : ${graph.segments}"
+                                          th:attr="x1=${segment.x1},y1=${segment.y1},x2=${segment.x2},y2=${segment.y2},vector-effect='non-scaling-stroke'">
+                                    </line>
+
+                                </svg>
+
+                                <div class="rating-points-layer">
+                                    <div class="rating-point-dot"
+                                         th:each="point : ${graph.points}"
+                                         th:style="'left:' + ${point.x} + '%; top:' + ${point.y} + '%;'">
+                                    </div>
+                                </div>
+
+                                <div class="rating-hit-grid"
+                                     th:style="'grid-template-rows: repeat(' + ${monthRows.size()} + ', 1fr);'">
+                                    <button type="button"
+                                            class="rating-hit-row"
+                                            th:each="graphRow : ${monthRows}"
+                                            th:with="record=${graphRow.recordsByHabitId[graph.habitDefinition.id]}"
+                                            th:attr="data-date=${graphRow.date},
+                                                     data-habit-id=${graph.habitDefinition.id},
+                                                     data-habit-name=${graph.habitDefinition.name},
+                                                     data-scale-max=${graph.scaleMax},
+                                                     data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="add-column-cell"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -392,6 +193,7 @@
 
         <form action="/highlight" method="post">
             <input type="hidden" id="highlightDateInput" name="date">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
             <label for="highlightTextarea">Daily highlight</label>
             <textarea id="highlightTextarea" name="dailyHighlight" maxlength="500"></textarea>
 
@@ -408,6 +210,7 @@
         <h2>Add Column</h2>
 
         <form action="/columns" method="post">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
             <div class="field-group">
                 <label for="columnNameInput">Column name</label>
                 <input type="text" id="columnNameInput" name="name" maxlength="255" required>
@@ -441,6 +244,7 @@
 
         <form action="/columns/rename" method="post">
             <input type="hidden" id="manageColumnIdInput" name="habitDefinitionId">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
 
             <div class="field-group">
                 <label for="manageColumnNameInput">Column name</label>
@@ -455,6 +259,7 @@
 
         <form action="/columns/delete" method="post">
             <input type="hidden" id="deleteColumnIdInput" name="habitDefinitionId">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
 
             <div class="dialog-actions">
                 <button type="submit" class="danger">Delete Column</button>
@@ -472,6 +277,7 @@
             <input type="hidden" id="checkboxDateInput" name="date">
             <input type="hidden" id="checkboxHabitDefinitionInput" name="habitDefinitionId">
             <input type="hidden" name="checked" value="true">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
 
             <div class="field-group">
                 <label for="checkboxRatingInput">Rate from 1 to 10</label>
@@ -494,6 +300,7 @@
         <form action="/records/rating" method="post">
             <input type="hidden" id="ratingDateInput" name="date">
             <input type="hidden" id="ratingHabitDefinitionInput" name="habitDefinitionId">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
 
             <div class="field-group">
                 <label for="ratingValueInput" id="ratingValueLabel">Rating</label>
@@ -508,10 +315,40 @@
     </div>
 </dialog>
 
+<dialog id="photoDialog">
+    <div class="dialog-content">
+        <h2>Add Photos</h2>
+        <p class="muted" th:text="'Photos for ' + ${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">Photos for March 2026</p>
+
+        <form action="/photos" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
+
+            <div class="field-group">
+                <label for="photoInput">Choose images</label>
+                <input type="file" id="photoInput" name="photos" accept="image/*" multiple required>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelPhotoButton">Cancel</button>
+                <button type="submit">Save Photos</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<dialog id="photoLightboxDialog" class="photo-lightbox-dialog">
+    <div class="photo-lightbox-content">
+        <button type="button" class="photo-lightbox-close" id="closePhotoLightboxButton">Close</button>
+        <img id="photoLightboxImage" src="" alt="">
+        <p class="muted photo-lightbox-caption" id="photoLightboxCaption"></p>
+    </div>
+</dialog>
+
 <form action="/records/checkbox" method="post" id="checkboxClearForm" hidden>
     <input type="hidden" id="checkboxClearDateInput" name="date">
     <input type="hidden" id="checkboxClearHabitDefinitionInput" name="habitDefinitionId">
     <input type="hidden" name="checked" value="false">
+    <input type="hidden" name="month" th:value="${currentMonthValue}">
 </form>
 
 <script>
@@ -552,6 +389,15 @@
     const ratingValueInput = document.getElementById("ratingValueInput");
     const ratingValueLabel = document.getElementById("ratingValueLabel");
     const cancelRatingButton = document.getElementById("cancelRatingButton");
+    const photoDialog = document.getElementById("photoDialog");
+    const openPhotoDialogButton = document.getElementById("openPhotoDialogButton");
+    const openEmptyPhotoDialogButton = document.getElementById("openEmptyPhotoDialogButton");
+    const cancelPhotoButton = document.getElementById("cancelPhotoButton");
+    const photoLightboxDialog = document.getElementById("photoLightboxDialog");
+    const photoLightboxImage = document.getElementById("photoLightboxImage");
+    const photoLightboxCaption = document.getElementById("photoLightboxCaption");
+    const closePhotoLightboxButton = document.getElementById("closePhotoLightboxButton");
+    const photoOpenButtons = document.querySelectorAll(".month-photo-open-button");
 
     const checkboxClearForm = document.getElementById("checkboxClearForm");
     const checkboxClearDateInput = document.getElementById("checkboxClearDateInput");
@@ -642,6 +488,33 @@
 
     cancelRatingButton.addEventListener("click", function () {
         ratingDialog.close();
+    });
+
+    openPhotoDialogButton.addEventListener("click", function () {
+        photoDialog.showModal();
+    });
+
+    if (openEmptyPhotoDialogButton) {
+        openEmptyPhotoDialogButton.addEventListener("click", function () {
+            photoDialog.showModal();
+        });
+    }
+
+    cancelPhotoButton.addEventListener("click", function () {
+        photoDialog.close();
+    });
+
+    closePhotoLightboxButton.addEventListener("click", function () {
+        photoLightboxDialog.close();
+    });
+
+    photoOpenButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            photoLightboxImage.src = button.dataset.photoSrc;
+            photoLightboxImage.alt = button.dataset.photoName;
+            photoLightboxCaption.textContent = button.dataset.photoName;
+            photoLightboxDialog.showModal();
+        });
     });
 
     checkboxInputs.forEach(function (checkbox) {
