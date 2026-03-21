@@ -4,6 +4,10 @@
     <title>Habit Tracker</title>
     <meta charset="UTF-8">
     <style>
+        :root {
+            --month-row-height: 48px;
+        }
+
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f7fb;
@@ -13,7 +17,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 40px auto;
             padding: 20px;
         }
@@ -47,6 +51,10 @@
             background-color: #eef3fb;
         }
 
+        .month-row {
+            height: var(--month-row-height);
+        }
+
         .day-column {
             width: 70px;
             text-align: center;
@@ -59,6 +67,11 @@
 
         .habit-column {
             min-width: 110px;
+            text-align: center;
+        }
+
+        .rating-graph-column {
+            min-width: 160px;
             text-align: center;
         }
 
@@ -96,16 +109,78 @@
 
         .habit-cell {
             text-align: center;
-        }
-
-        .rating-cell {
-            cursor: pointer;
+            vertical-align: middle;
         }
 
         .checkbox-input {
             width: 18px;
             height: 18px;
             cursor: pointer;
+        }
+
+        .rating-graph-cell {
+            padding: 0;
+            vertical-align: top;
+            background: linear-gradient(to right, rgba(45, 114, 217, 0.04), rgba(45, 114, 217, 0.1));
+        }
+
+        .rating-graph-shell {
+            position: relative;
+            min-height: calc(var(--month-row-height) * 28);
+        }
+
+        .rating-graph-svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .rating-guide-line {
+            stroke: rgba(45, 114, 217, 0.18);
+            stroke-width: 0.7;
+            stroke-dasharray: 3 3;
+        }
+
+        .rating-line-segment {
+            stroke: #355f9f;
+            stroke-width: 1.1;
+            stroke-linecap: round;
+        }
+
+        .rating-points-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .rating-point-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            margin-left: -4px;
+            margin-top: -4px;
+            border-radius: 50%;
+            background: #355f9f;
+            pointer-events: none;
+        }
+
+        .rating-hit-grid {
+            position: absolute;
+            inset: 0;
+            display: grid;
+        }
+
+        .rating-hit-row {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .rating-hit-row:hover {
+            background: rgba(53, 95, 159, 0.06);
         }
 
         .muted {
@@ -201,7 +276,7 @@
 <div class="container">
     <div class="card">
         <h1 th:text="${#temporals.format(currentMonth.atDay(1), 'MMMM yyyy')}">March 2026</h1>
-        <p class="muted">Click a highlight to edit it. Add custom columns with the plus button.</p>
+        <p class="muted">Checkbox habits stay row by row. Rating habits render as month-long graph columns.</p>
     </div>
 
     <div class="card">
@@ -211,15 +286,26 @@
                 <th class="day-column">Day</th>
                 <th class="highlight-column">Daily Highlight</th>
                 <th class="habit-column"
-                    th:each="definition : ${habitDefinitions}"
+                    th:each="definition : ${checkboxHabitDefinitions}"
                     th:attr="data-habit-id=${definition.id},
                              data-habit-name=${definition.name},
                              data-habit-type=${definition.type.name()},
                              data-scale-max=${definition.ratingScaleMax}">
                     <div class="habit-header">
+                        <span class="habit-name" th:text="${definition.name}">Exercise</span>
+                        <button type="button" class="column-manage-button">Edit</button>
+                    </div>
+                </th>
+                <th class="rating-graph-column"
+                    th:each="graph : ${ratingHabitGraphs}"
+                    th:attr="data-habit-id=${graph.habitDefinition.id},
+                             data-habit-name=${graph.habitDefinition.name},
+                             data-habit-type=${graph.habitDefinition.type.name()},
+                             data-scale-max=${graph.scaleMax}">
+                    <div class="habit-header">
                         <span class="habit-name"
-                              th:text="${definition.type.name() == 'RATING' ? definition.name + ' (1-' + definition.ratingScaleMax + ')' : definition.name}">
-                            Exercise
+                              th:text="${graph.habitDefinition.name + ' (' + graph.scaleMin + '-' + graph.scaleMax + ')'}">
+                            Mood
                         </span>
                         <button type="button" class="column-manage-button">Edit</button>
                     </div>
@@ -230,7 +316,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="row : ${monthRows}">
+            <tr th:each="row, rowStat : ${monthRows}" class="month-row">
                 <td class="day-column" th:text="${row.date.dayOfMonth}">1</td>
                 <td class="highlight-column highlight-cell">
                     <div class="highlight-text"
@@ -241,21 +327,56 @@
                     </div>
                 </td>
                 <td class="habit-cell"
-                    th:each="definition : ${habitDefinitions}"
+                    th:each="definition : ${checkboxHabitDefinitions}"
                     th:with="record=${row.recordsByHabitId[definition.id]}"
-                    th:attr="data-type=${definition.type.name()},
-                             data-date=${row.date},
+                    th:attr="data-date=${row.date},
                              data-habit-id=${definition.id},
                              data-habit-name=${definition.name},
                              data-scale-max=${definition.ratingScaleMax},
-                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}"
-                    th:classappend="${definition.type.name() == 'RATING'} ? ' rating-cell' : ''">
-                    <input th:if="${definition.type.name() == 'CHECKBOX'}"
-                           type="checkbox"
+                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
+                    <input type="checkbox"
                            class="checkbox-input"
                            th:checked="${record != null and record.checkedValue == true}">
-                    <span th:if="${definition.type.name() == 'RATING'}"
-                          th:text="${record != null and record.numericValue != null ? record.numericValue + '/' + definition.ratingScaleMax : ''}"></span>
+                </td>
+                <td class="rating-graph-cell"
+                    th:if="${rowStat.index == 0}"
+                    th:each="graph : ${ratingHabitGraphs}"
+                    th:attr="rowspan=${monthRows.size()}">
+                    <div class="rating-graph-shell"
+                         th:style="'height: calc(var(--month-row-height) * ' + ${monthRows.size()} + ');'">
+                        <svg class="rating-graph-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <line class="rating-guide-line" x1="0" y1="0" x2="0" y2="100"></line>
+                            <line class="rating-guide-line" x1="50" y1="0" x2="50" y2="100"></line>
+                            <line class="rating-guide-line" x1="100" y1="0" x2="100" y2="100"></line>
+
+                            <line class="rating-line-segment"
+                                  th:each="segment : ${graph.segments}"
+                                  th:attr="x1=${segment.x1},y1=${segment.y1},x2=${segment.x2},y2=${segment.y2},vector-effect='non-scaling-stroke'">
+                            </line>
+
+                        </svg>
+
+                        <div class="rating-points-layer">
+                            <div class="rating-point-dot"
+                                 th:each="point : ${graph.points}"
+                                 th:style="'left:' + ${point.x} + '%; top:' + ${point.y} + '%;'">
+                            </div>
+                        </div>
+
+                        <div class="rating-hit-grid"
+                             th:style="'grid-template-rows: repeat(' + ${monthRows.size()} + ', 1fr);'">
+                            <button type="button"
+                                    class="rating-hit-row"
+                                    th:each="graphRow : ${monthRows}"
+                                    th:with="record=${graphRow.recordsByHabitId[graph.habitDefinition.id]}"
+                                    th:attr="data-date=${graphRow.date},
+                                             data-habit-id=${graph.habitDefinition.id},
+                                             data-habit-name=${graph.habitDefinition.name},
+                                             data-scale-max=${graph.scaleMax},
+                                             data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
+                            </button>
+                        </div>
+                    </div>
                 </td>
                 <td class="add-column-cell"></td>
             </tr>
@@ -435,7 +556,8 @@
     const checkboxClearForm = document.getElementById("checkboxClearForm");
     const checkboxClearDateInput = document.getElementById("checkboxClearDateInput");
     const checkboxClearHabitDefinitionInput = document.getElementById("checkboxClearHabitDefinitionInput");
-    const habitCells = document.querySelectorAll(".habit-cell");
+    const checkboxInputs = document.querySelectorAll(".checkbox-input");
+    const ratingHitRows = document.querySelectorAll(".rating-hit-row");
 
     function openHighlightDialog(date, highlight) {
         highlightDateInput.value = date;
@@ -482,7 +604,7 @@
         deleteColumnIdInput.value = headerCell.dataset.habitId;
         manageColumnNameInput.value = headerCell.dataset.habitName;
         manageColumnInfo.textContent = type === "RATING"
-            ? "Rating column on a 1-" + scaleMax + " scale"
+            ? "Rating graph column on a 1-" + scaleMax + " scale"
             : "Checkbox column with 1-10 follow-up rating";
 
         manageColumnDialog.showModal();
@@ -522,33 +644,29 @@
         ratingDialog.close();
     });
 
-    habitCells.forEach(function (cell) {
-        const checkbox = cell.querySelector(".checkbox-input");
+    checkboxInputs.forEach(function (checkbox) {
+        const cell = checkbox.closest(".habit-cell");
 
-        if (checkbox) {
-            checkbox.addEventListener("click", function (event) {
-                event.stopPropagation();
-            });
+        checkbox.addEventListener("click", function (event) {
+            event.stopPropagation();
+        });
 
-            checkbox.addEventListener("change", function () {
-                if (checkbox.checked) {
-                    openCheckboxDialog(cell);
-                    return;
-                }
+        checkbox.addEventListener("change", function () {
+            if (checkbox.checked) {
+                openCheckboxDialog(cell);
+                return;
+            }
 
-                checkboxClearDateInput.value = cell.dataset.date;
-                checkboxClearHabitDefinitionInput.value = cell.dataset.habitId;
-                checkboxClearForm.submit();
-            });
+            checkboxClearDateInput.value = cell.dataset.date;
+            checkboxClearHabitDefinitionInput.value = cell.dataset.habitId;
+            checkboxClearForm.submit();
+        });
+    });
 
-            return;
-        }
-
-        if (cell.dataset.type === "RATING") {
-            cell.addEventListener("click", function () {
-                openRatingDialog(cell);
-            });
-        }
+    ratingHitRows.forEach(function (rowButton) {
+        rowButton.addEventListener("click", function () {
+            openRatingDialog(rowButton);
+        });
     });
 
     columnManageButtons.forEach(function (button) {

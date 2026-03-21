@@ -22,8 +22,9 @@ public class HabitTrackerController {
 
     @GetMapping("/")
     public String showTracker(Model model) {
-        model.addAttribute("habitDefinitions", habitTrackerService.getHabitDefinitions());
         model.addAttribute("monthRows", habitTrackerService.buildCurrentMonthView());
+        model.addAttribute("checkboxHabitDefinitions", habitTrackerService.getCheckboxHabitDefinitions());
+        model.addAttribute("ratingHabitGraphs", habitTrackerService.buildCurrentMonthRatingGraphs());
         model.addAttribute("currentMonth", YearMonth.now());
         return "tracker";
     }

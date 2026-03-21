@@ -10,6 +10,9 @@ import org.timur.habittracker.repository.DayEntryRepository;
 import org.timur.habittracker.repository.HabitDefinitionRepository;
 import org.timur.habittracker.repository.HabitRecordRepository;
 import org.timur.habittracker.view.MonthDayView;
+import org.timur.habittracker.view.MonthRatingGraphView;
+import org.timur.habittracker.view.MonthRatingPointView;
+import org.timur.habittracker.view.MonthRatingSegmentView;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -41,8 +44,7 @@ public class HabitTrackerService {
 
     @Transactional(readOnly = true)
     public List<MonthDayView> buildCurrentMonthView() {
-        LocalDate currentDate = LocalDate.now();
-        YearMonth currentMonth = YearMonth.from(currentDate);
+        YearMonth currentMonth = YearMonth.now();
         LocalDate firstDayOfMonth = currentMonth.atDay(1);
         LocalDate lastDayOfMonth = currentMonth.atEndOfMonth();
 
@@ -65,6 +67,28 @@ public class HabitTrackerService {
         }
 
         return monthRows;
+    }
+
+    @Transactional(readOnly = true)
+    public List<HabitDefinition> getCheckboxHabitDefinitions() {
+        return getHabitDefinitions().stream()
+                .filter(definition -> definition.getType() == HabitType.CHECKBOX)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MonthRatingGraphView> buildCurrentMonthRatingGraphs() {
+        List<MonthDayView> monthRows = buildCurrentMonthView();
+        List<HabitDefinition> ratingDefinitions = getHabitDefinitions().stream()
+                .filter(definition -> definition.getType() == HabitType.RATING)
+                .toList();
+
+        List<MonthRatingGraphView> ratingGraphs = new ArrayList<>();
+        for (HabitDefinition definition : ratingDefinitions) {
+            ratingGraphs.add(buildRatingGraph(definition, monthRows));
+        }
+
+        return ratingGraphs;
     }
 
     public DayEntry updateDailyHighlight(LocalDate date, String dailyHighlight) {
@@ -180,5 +204,60 @@ public class HabitTrackerService {
     public HabitRecord getOrCreateHabitRecord(DayEntry dayEntry, HabitDefinition habitDefinition) {
         return habitRecordRepository.findByDayEntryAndHabitDefinition(dayEntry, habitDefinition)
                 .orElseGet(() -> habitRecordRepository.save(new HabitRecord(dayEntry, habitDefinition)));
+    }
+
+    private MonthRatingGraphView buildRatingGraph(HabitDefinition definition, List<MonthDayView> monthRows) {
+        int scaleMin = 1;
+        int scaleMax = definition.getRatingScaleMax() == null || definition.getRatingScaleMax() < scaleMin
+                ? 10
+                : definition.getRatingScaleMax();
+
+        List<MonthRatingPointView> points = new ArrayList<>();
+        List<MonthRatingSegmentView> segments = new ArrayList<>();
+        MonthRatingPointView previousPoint = null;
+        int previousDayIndex = -1;
+
+        for (int dayIndex = 0; dayIndex < monthRows.size(); dayIndex++) {
+            MonthDayView row = monthRows.get(dayIndex);
+            HabitRecord record = row.getRecordsByHabitId().get(definition.getId());
+            if (record == null || record.getNumericValue() == null) {
+                previousPoint = null;
+                previousDayIndex = -1;
+                continue;
+            }
+
+            int value = clamp(record.getNumericValue(), scaleMin, scaleMax);
+            double x = calculateX(value, scaleMin, scaleMax);
+            double y = ((dayIndex + 0.5) / monthRows.size()) * 100.0;
+
+            MonthRatingPointView point = new MonthRatingPointView(row.getDate(), value, x, y);
+            points.add(point);
+
+            if (previousPoint != null && previousDayIndex + 1 == dayIndex) {
+                segments.add(new MonthRatingSegmentView(
+                        previousPoint.getX(),
+                        previousPoint.getY(),
+                        point.getX(),
+                        point.getY()
+                ));
+            }
+
+            previousPoint = point;
+            previousDayIndex = dayIndex;
+        }
+
+        return new MonthRatingGraphView(definition, scaleMin, scaleMax, points, segments);
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private double calculateX(int value, int scaleMin, int scaleMax) {
+        if (scaleMax <= scaleMin) {
+            return 50.0;
+        }
+
+        return ((double) (value - scaleMin) / (scaleMax - scaleMin)) * 100.0;
     }
 }
