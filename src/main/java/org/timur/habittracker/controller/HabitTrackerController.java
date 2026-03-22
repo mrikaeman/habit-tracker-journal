@@ -31,14 +31,16 @@ public class HabitTrackerController {
     @GetMapping("/")
     public String showTracker(@RequestParam(required = false) YearMonth month, Model model) {
         YearMonth selectedMonth = month == null ? YearMonth.now() : month;
+        LocalDate journalStartDate = determineJournalStartDate(selectedMonth);
 
         model.addAttribute("monthRows", habitTrackerService.buildMonthView(selectedMonth));
-        model.addAttribute("checkboxHabitDefinitions", habitTrackerService.getCheckboxHabitDefinitions());
+        model.addAttribute("checkboxHabitDefinitions", habitTrackerService.getCheckboxHabitDefinitions(selectedMonth));
         model.addAttribute("ratingHabitGraphs", habitTrackerService.buildMonthRatingGraphs(selectedMonth));
         model.addAttribute("monthOptions", habitTrackerService.buildMonthOptions(selectedMonth));
         model.addAttribute("monthPhotos", habitTrackerService.getMonthPhotos(selectedMonth));
         model.addAttribute("currentMonth", selectedMonth);
         model.addAttribute("currentMonthValue", selectedMonth.toString());
+        model.addAttribute("journalStartDate", journalStartDate);
         return "tracker";
     }
 
@@ -68,12 +70,22 @@ public class HabitTrackerController {
         return redirectToMonth(month);
     }
 
+    @PostMapping("/journal")
+    public String updateJournal(@RequestParam LocalDate date,
+                                @RequestParam String dailyThought,
+                                @RequestParam(required = false) String month) {
+        habitTrackerService.updateDailyThought(date, dailyThought);
+        return redirectToMonth(month);
+    }
+
     @PostMapping("/columns")
     public String createColumn(@RequestParam String name,
                                @RequestParam HabitType type,
                                @RequestParam(required = false) Integer ratingScaleMax,
+                               @RequestParam(defaultValue = "CURRENT_MONTH") String scope,
                                @RequestParam(required = false) String month) {
-        habitTrackerService.createHabitDefinition(name, type, ratingScaleMax);
+        YearMonth selectedMonth = parseSelectedMonth(month);
+        habitTrackerService.createHabitDefinition(name, type, ratingScaleMax, selectedMonth, "ALL_VISIBLE_MONTHS".equals(scope));
         return redirectToMonth(month);
     }
 
@@ -81,14 +93,14 @@ public class HabitTrackerController {
     public String renameColumn(@RequestParam Long habitDefinitionId,
                                @RequestParam String name,
                                @RequestParam(required = false) String month) {
-        habitTrackerService.renameHabitDefinition(habitDefinitionId, name);
+        habitTrackerService.renameHabitDefinition(habitDefinitionId, name, parseSelectedMonth(month));
         return redirectToMonth(month);
     }
 
     @PostMapping("/columns/delete")
     public String deleteColumn(@RequestParam Long habitDefinitionId,
                                @RequestParam(required = false) String month) {
-        habitTrackerService.deleteHabitDefinition(habitDefinitionId);
+        habitTrackerService.deleteHabitDefinition(habitDefinitionId, parseSelectedMonth(month));
         return redirectToMonth(month);
     }
 
@@ -127,5 +139,18 @@ public class HabitTrackerController {
 
     private String redirectToMonth(String month) {
         return month == null || month.isBlank() ? "redirect:/" : "redirect:/?month=" + month;
+    }
+
+    private YearMonth parseSelectedMonth(String month) {
+        return month == null || month.isBlank() ? YearMonth.now() : YearMonth.parse(month);
+    }
+
+    private LocalDate determineJournalStartDate(YearMonth selectedMonth) {
+        YearMonth currentMonth = YearMonth.now();
+        if (selectedMonth.equals(currentMonth)) {
+            return LocalDate.now();
+        }
+
+        return selectedMonth.atDay(1);
     }
 }

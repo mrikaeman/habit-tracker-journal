@@ -21,6 +21,9 @@ public class DayEntry {
     @Column(length = 500)
     private String dailyHighlight;
 
+    @Column(length = 4000)
+    private String dailyThought;
+
     public DayEntry() {
     }
 
@@ -42,5 +45,13 @@ public class DayEntry {
 
     public void setDailyHighlight(String dailyHighlight) {
         this.dailyHighlight = dailyHighlight;
+    }
+
+    public String getDailyThought() {
+        return dailyThought;
+    }
+
+    public void setDailyThought(String dailyThought) {
+        this.dailyThought = dailyThought;
     }
 }

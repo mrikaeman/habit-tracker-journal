@@ -15,5 +15,7 @@ public interface HabitRecordRepository extends JpaRepository<HabitRecord, Long> 
 
     Optional<HabitRecord> findByDayEntryAndHabitDefinition(DayEntry dayEntry, HabitDefinition habitDefinition);
 
+    List<HabitRecord> findByHabitDefinition(HabitDefinition habitDefinition);
+
     void deleteByHabitDefinition(HabitDefinition habitDefinition);
 }

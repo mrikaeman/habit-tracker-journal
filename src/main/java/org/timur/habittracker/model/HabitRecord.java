@@ -54,6 +54,10 @@ public class HabitRecord {
         return habitDefinition;
     }
 
+    public void setHabitDefinition(HabitDefinition habitDefinition) {
+        this.habitDefinition = habitDefinition;
+    }
+
     public Boolean getCheckedValue() {
         return checkedValue;
     }

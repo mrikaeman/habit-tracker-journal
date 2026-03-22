@@ -36,6 +36,7 @@
                             </a>
                         </div>
                     </details>
+                    <button type="button" class="month-badge month-journal-button" id="openJournalDialogButton">Journal</button>
                     <button type="button" class="month-badge month-photo-button" id="openPhotoDialogButton">Photos</button>
                 </div>
             </div>
@@ -86,23 +87,23 @@
                         <th class="habit-column"
                             th:each="definition : ${checkboxHabitDefinitions}"
                             th:attr="data-habit-id=${definition.id},
-                                     data-habit-name=${definition.name},
+                                     data-habit-name=${definition.displayName},
                                      data-habit-type=${definition.type.name()},
                                      data-scale-max=${definition.ratingScaleMax}">
                             <div class="habit-header">
-                                <span class="habit-name" th:text="${definition.name}">Exercise</span>
+                                <span class="habit-name" th:text="${definition.displayName}">Exercise</span>
                                 <button type="button" class="column-manage-button">Edit</button>
                             </div>
                         </th>
                         <th class="rating-graph-column"
                             th:each="graph : ${ratingHabitGraphs}"
                             th:attr="data-habit-id=${graph.habitDefinition.id},
-                                     data-habit-name=${graph.habitDefinition.name},
+                                     data-habit-name=${graph.habitDefinition.displayName},
                                      data-habit-type=${graph.habitDefinition.type.name()},
                                      data-scale-max=${graph.scaleMax}">
                             <div class="habit-header">
                                 <span class="habit-name"
-                                      th:text="${graph.habitDefinition.name + ' (' + graph.scaleMin + '-' + graph.scaleMax + ')'}">
+                                      th:text="${graph.habitDefinition.displayName + ' (' + graph.scaleMin + '-' + graph.scaleMax + ')'}">
                                     Mood
                                 </span>
                                 <button type="button" class="column-manage-button">Edit</button>
@@ -130,7 +131,7 @@
                             th:classappend="${record == null or record.checkedValue == null or !record.checkedValue} ? ' empty' : ''"
                             th:attr="data-date=${row.date},
                                      data-habit-id=${definition.id},
-                                     data-habit-name=${definition.name},
+                                     data-habit-name=${definition.displayName},
                                      data-scale-max=${definition.ratingScaleMax},
                                      data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
                             <input type="checkbox"
@@ -170,7 +171,7 @@
                                             th:with="record=${graphRow.recordsByHabitId[graph.habitDefinition.id]}"
                                             th:attr="data-date=${graphRow.date},
                                                      data-habit-id=${graph.habitDefinition.id},
-                                                     data-habit-name=${graph.habitDefinition.name},
+                                                     data-habit-name=${graph.habitDefinition.displayName},
                                                      data-scale-max=${graph.scaleMax},
                                                      data-rating=${record != null and record.numericValue != null ? record.numericValue : ''}">
                                     </button>
@@ -183,6 +184,15 @@
                 </table>
             </div>
         </section>
+    </div>
+</div>
+
+<div id="journalDayData" hidden>
+    <div th:each="row : ${monthRows}"
+         class="journal-day-item"
+         th:attr="data-date=${row.date},
+                  data-label=${#temporals.format(row.date, 'EEEE, d MMMM yyyy')},
+                  data-thought=${row.dailyThought}">
     </div>
 </div>
 
@@ -221,6 +231,14 @@
                 <select id="columnTypeInput" name="type">
                     <option value="CHECKBOX">Checkbox</option>
                     <option value="RATING">Rating</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label for="columnScopeInput">Where should this column appear?</label>
+                <select id="columnScopeInput" name="scope">
+                    <option value="CURRENT_MONTH">Only this month</option>
+                    <option value="ALL_VISIBLE_MONTHS">This month and all visible months</option>
                 </select>
             </div>
 
@@ -344,6 +362,36 @@
     </div>
 </dialog>
 
+<dialog id="journalDialog" class="journal-dialog">
+    <div class="dialog-content journal-dialog-content">
+        <div class="journal-dialog-header">
+            <div>
+                <h2>Daily Journal</h2>
+                <p class="muted journal-dialog-date" id="journalDialogDate">Sunday, 22 March 2026</p>
+            </div>
+            <div class="journal-nav">
+                <button type="button" class="secondary journal-nav-button" id="journalPreviousButton">Previous</button>
+                <button type="button" class="secondary journal-nav-button" id="journalNextButton">Next</button>
+            </div>
+        </div>
+
+        <form action="/journal" method="post" id="journalForm">
+            <input type="hidden" id="journalDateInput" name="date">
+            <input type="hidden" name="month" th:value="${currentMonthValue}">
+
+            <div class="field-group">
+                <label for="journalTextarea">Daily thought</label>
+                <textarea id="journalTextarea" name="dailyThought" maxlength="4000" class="journal-textarea"></textarea>
+            </div>
+
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="cancelJournalButton">Close</button>
+                <button type="submit">Save Thought</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
 <form action="/records/checkbox" method="post" id="checkboxClearForm" hidden>
     <input type="hidden" id="checkboxClearDateInput" name="date">
     <input type="hidden" id="checkboxClearHabitDefinitionInput" name="habitDefinitionId">
@@ -351,7 +399,7 @@
     <input type="hidden" name="month" th:value="${currentMonthValue}">
 </form>
 
-<script>
+<script th:inline="javascript">
     const highlightDialog = document.getElementById("highlightDialog");
     const highlightDateInput = document.getElementById("highlightDateInput");
     const highlightDialogDate = document.getElementById("highlightDialogDate");
@@ -398,12 +446,32 @@
     const photoLightboxCaption = document.getElementById("photoLightboxCaption");
     const closePhotoLightboxButton = document.getElementById("closePhotoLightboxButton");
     const photoOpenButtons = document.querySelectorAll(".month-photo-open-button");
+    const journalDialog = document.getElementById("journalDialog");
+    const openJournalDialogButton = document.getElementById("openJournalDialogButton");
+    const journalDialogDate = document.getElementById("journalDialogDate");
+    const journalDateInput = document.getElementById("journalDateInput");
+    const journalTextarea = document.getElementById("journalTextarea");
+    const cancelJournalButton = document.getElementById("cancelJournalButton");
+    const journalPreviousButton = document.getElementById("journalPreviousButton");
+    const journalNextButton = document.getElementById("journalNextButton");
+    const journalDayItems = document.querySelectorAll(".journal-day-item");
 
     const checkboxClearForm = document.getElementById("checkboxClearForm");
     const checkboxClearDateInput = document.getElementById("checkboxClearDateInput");
     const checkboxClearHabitDefinitionInput = document.getElementById("checkboxClearHabitDefinitionInput");
     const checkboxInputs = document.querySelectorAll(".checkbox-input");
     const ratingHitRows = document.querySelectorAll(".rating-hit-row");
+    const journalDays = Array.from(journalDayItems).map(function (item) {
+        return {
+            date: item.dataset.date,
+            label: item.dataset.label,
+            thought: item.dataset.thought || ""
+        };
+    });
+    const journalStartDate = [[${journalStartDate}]];
+    let activeJournalIndex = Math.max(journalDays.findIndex(function (day) {
+        return day.date === journalStartDate;
+    }), 0);
 
     function openHighlightDialog(date, highlight) {
         highlightDateInput.value = date;
@@ -457,6 +525,34 @@
         manageColumnNameInput.focus();
     }
 
+    function syncActiveJournalThought() {
+        if (activeJournalIndex < 0 || activeJournalIndex >= journalDays.length) {
+            return;
+        }
+
+        journalDays[activeJournalIndex].thought = journalTextarea.value;
+    }
+
+    function renderActiveJournalDay() {
+        if (journalDays.length === 0) {
+            journalDialogDate.textContent = "No days available in this month";
+            journalDateInput.value = "";
+            journalTextarea.value = "";
+            journalTextarea.disabled = true;
+            journalPreviousButton.disabled = true;
+            journalNextButton.disabled = true;
+            return;
+        }
+
+        const activeDay = journalDays[activeJournalIndex];
+        journalDialogDate.textContent = activeDay.label;
+        journalDateInput.value = activeDay.date;
+        journalTextarea.value = activeDay.thought;
+        journalTextarea.disabled = false;
+        journalPreviousButton.disabled = activeJournalIndex === 0;
+        journalNextButton.disabled = activeJournalIndex === journalDays.length - 1;
+    }
+
     highlightFields.forEach(function (field) {
         field.addEventListener("click", function () {
             openHighlightDialog(field.dataset.date, field.dataset.highlight);
@@ -502,6 +598,38 @@
 
     cancelPhotoButton.addEventListener("click", function () {
         photoDialog.close();
+    });
+
+    openJournalDialogButton.addEventListener("click", function () {
+        renderActiveJournalDay();
+        journalDialog.showModal();
+        journalTextarea.focus();
+    });
+
+    cancelJournalButton.addEventListener("click", function () {
+        journalDialog.close();
+    });
+
+    journalPreviousButton.addEventListener("click", function () {
+        syncActiveJournalThought();
+        if (activeJournalIndex > 0) {
+            activeJournalIndex -= 1;
+            renderActiveJournalDay();
+            journalTextarea.focus();
+        }
+    });
+
+    journalNextButton.addEventListener("click", function () {
+        syncActiveJournalThought();
+        if (activeJournalIndex < journalDays.length - 1) {
+            activeJournalIndex += 1;
+            renderActiveJournalDay();
+            journalTextarea.focus();
+        }
+    });
+
+    journalTextarea.addEventListener("input", function () {
+        syncActiveJournalThought();
     });
 
     closePhotoLightboxButton.addEventListener("click", function () {

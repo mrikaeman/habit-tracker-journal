@@ -18,6 +18,9 @@ public class HabitDefinition {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column
+    private String displayName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private HabitType type;
@@ -25,18 +28,31 @@ public class HabitDefinition {
     @Column
     private Integer ratingScaleMax;
 
+    @Column
+    private String monthKey;
+
     public HabitDefinition() {
     }
 
     public HabitDefinition(String name, HabitType type) {
         this.name = name;
+        this.displayName = name;
         this.type = type;
     }
 
     public HabitDefinition(String name, HabitType type, Integer ratingScaleMax) {
         this.name = name;
+        this.displayName = name;
         this.type = type;
         this.ratingScaleMax = ratingScaleMax;
+    }
+
+    public HabitDefinition(String name, String displayName, HabitType type, Integer ratingScaleMax, String monthKey) {
+        this.name = name;
+        this.displayName = displayName;
+        this.type = type;
+        this.ratingScaleMax = ratingScaleMax;
+        this.monthKey = monthKey;
     }
 
     public Long getId() {
@@ -51,11 +67,27 @@ public class HabitDefinition {
         this.name = name;
     }
 
+    public String getDisplayName() {
+        return displayName == null || displayName.isBlank() ? name : displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
     public HabitType getType() {
         return type;
     }
 
     public Integer getRatingScaleMax() {
         return ratingScaleMax;
+    }
+
+    public String getMonthKey() {
+        return monthKey;
+    }
+
+    public void setMonthKey(String monthKey) {
+        this.monthKey = monthKey;
     }
 }
